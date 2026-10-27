@@ -142,6 +142,7 @@ export function fakePrefs(overrides?: Partial<PrefsState>): PrefsState {
 		storyTagColors: {[tags[0]]: 'red', [tags[1]]: 'green', [tags[2]]: 'blue'},
 		canvasBackgroundColor: '',
 		canvasGridColor: '',
+		canvasArrowColor: '',
 		nodeBackgroundColor: '',
 		nodeTextColor: '',
 		nodeActiveColor: '',

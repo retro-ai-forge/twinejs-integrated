@@ -23,6 +23,7 @@ export function ColorSettingsSetter() {
 
 		const vars: [string, string][] = [
 			['--canvas-bg-color', prefs.canvasBackgroundColor],
+			['--canvas-arrow-color', prefs.canvasArrowColor],
 			['--node-bg-color', prefs.nodeBackgroundColor],
 			['--node-text-color', prefs.nodeTextColor],
 			['--node-active-color', prefs.nodeActiveColor],
@@ -49,6 +50,7 @@ export function ColorSettingsSetter() {
 	}, [
 		prefs.canvasBackgroundColor,
 		prefs.canvasGridColor,
+		prefs.canvasArrowColor,
 		prefs.nodeBackgroundColor,
 		prefs.nodeTextColor,
 		prefs.nodeActiveColor,

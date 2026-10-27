@@ -59,6 +59,13 @@ export function ColorPrefs() {
 					onChange={v => dispatch(setPref('canvasGridColor', v))}
 					onReset={() => dispatch(setPref('canvasGridColor', ''))}
 				/>
+				<ColorPicker
+					label="Arrows"
+					value={prefs.canvasArrowColor}
+					fallback="#aeaeae"
+					onChange={v => dispatch(setPref('canvasArrowColor', v))}
+					onReset={() => dispatch(setPref('canvasArrowColor', ''))}
+				/>
 			</div>
 			<div className="color-picker-row">
 				<ColorPicker
@@ -69,18 +76,18 @@ export function ColorPrefs() {
 					onReset={() => dispatch(setPref('nodeBackgroundColor', ''))}
 				/>
 				<ColorPicker
-					label="Node Text"
-					value={prefs.nodeTextColor}
-					fallback="#555555"
-					onChange={v => dispatch(setPref('nodeTextColor', v))}
-					onReset={() => dispatch(setPref('nodeTextColor', ''))}
-				/>
-				<ColorPicker
 					label="Node Active"
 					value={prefs.nodeActiveColor}
 					fallback="#d4dce8"
 					onChange={v => dispatch(setPref('nodeActiveColor', v))}
 					onReset={() => dispatch(setPref('nodeActiveColor', ''))}
+				/>
+				<ColorPicker
+					label="Node Text"
+					value={prefs.nodeTextColor}
+					fallback="#555555"
+					onChange={v => dispatch(setPref('nodeTextColor', v))}
+					onReset={() => dispatch(setPref('nodeTextColor', ''))}
 				/>
 			</div>
 			<p className="color-section-label">Node Edit Colors</p>
@@ -129,6 +136,7 @@ export function ColorPrefs() {
 				onClick={() => {
 					dispatch(setPref('canvasBackgroundColor', ''));
 					dispatch(setPref('canvasGridColor', ''));
+					dispatch(setPref('canvasArrowColor', ''));
 					dispatch(setPref('nodeBackgroundColor', ''));
 					dispatch(setPref('nodeTextColor', ''));
 					dispatch(setPref('nodeActiveColor', ''));

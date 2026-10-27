@@ -114,6 +114,7 @@ export interface PrefsState {
 	storyTagColors: Record<string, Color>;
 	canvasBackgroundColor: string;
 	canvasGridColor: string;
+	canvasArrowColor: string;
 	nodeBackgroundColor: string;
 	nodeTextColor: string;
 	nodeActiveColor: string;

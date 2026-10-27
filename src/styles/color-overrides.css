@@ -29,6 +29,14 @@
 }
 
 /* Connections / arrows */
+path.passage-connection,
+path.self-connection {
+	stroke: var(--canvas-arrow-color, var(--gray));
+}
+
+#link-arrowhead path {
+	fill: var(--canvas-arrow-color, var(--gray));
+}
 
 /* GUI — toolbar, dialogs, sidebar */
 .route-toolbar {
@@ -91,6 +99,11 @@ body {
 .passage-edit-stack .dialog-editor textarea {
 	background: var(--edit-bg-color, var(--white));
 	color: var(--edit-text-color);
+	caret-color: var(--edit-text-color);
+}
+
+.passage-edit-stack .dialog-editor .CodeMirror-cursor {
+	border-left-color: var(--edit-text-color);
 }
 
 /* Dialog card grid for color prefs */

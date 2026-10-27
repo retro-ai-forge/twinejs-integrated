@@ -33,6 +33,7 @@ export const defaults = (): PrefsState => ({
 	storyTagColors: {},
 	canvasBackgroundColor: '',
 	canvasGridColor: '',
+	canvasArrowColor: '',
 	nodeBackgroundColor: '',
 	nodeTextColor: '',
 	nodeActiveColor: '',
