@@ -4,25 +4,32 @@ import {LoadingCurtain} from './components/loading-curtain/loading-curtain';
 import {LocaleSwitcher} from './store/locale-switcher';
 import {PrefsContextProvider} from './store/prefs';
 import {Routes} from './routes';
+import {CloudSyncProvider} from './store/persistence/cloud-sync';
 import {StoriesContextProvider} from './store/stories';
 import {StoryFormatsContextProvider} from './store/story-formats';
 import {StateLoader} from './store/state-loader';
 import {ThemeSetter} from './store/theme-setter';
+import {ColorSettingsSetter} from './store/color-settings-setter';
 import './styles/typography.css';
+import './styles/color-overrides.css';
+import './styles/wudlands.css';
 
 export const App: React.FC = () => (
 	<GlobalErrorBoundary>
 		<PrefsContextProvider>
 			<LocaleSwitcher />
 			<ThemeSetter />
+			<ColorSettingsSetter />
 			<StoryFormatsContextProvider>
-				<StoriesContextProvider>
-					<StateLoader>
-						<React.Suspense fallback={<LoadingCurtain />}>
-							<Routes />
-						</React.Suspense>
-					</StateLoader>
-				</StoriesContextProvider>
+				<CloudSyncProvider>
+					<StoriesContextProvider>
+						<StateLoader>
+							<React.Suspense fallback={<LoadingCurtain />}>
+								<Routes />
+							</React.Suspense>
+						</StateLoader>
+					</StoriesContextProvider>
+				</CloudSyncProvider>
 			</StoryFormatsContextProvider>
 		</PrefsContextProvider>
 	</GlobalErrorBoundary>

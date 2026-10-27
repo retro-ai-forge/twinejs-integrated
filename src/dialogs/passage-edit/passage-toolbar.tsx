@@ -7,6 +7,7 @@ import {ButtonBar} from '../../components/container/button-bar';
 import {MenuButton} from '../../components/control/menu-button';
 import {RenamePassageButton} from '../../components/passage/rename-passage-button';
 import {TestPassageButton} from '../../routes/story-edit/toolbar/passage/test-passage-button';
+import {DebugToggleButton, WudlandsPassageButtons} from './wudlands-passage-buttons';
 import {
 	addPassageTag,
 	Passage,
@@ -108,6 +109,7 @@ export const PassageToolbar: React.FC<PassageToolbarProps> = props => {
 				]}
 				label={t('dialogs.passageEdit.size')}
 			/>
+			<WudlandsPassageButtons disabled={disabled} passage={passage} story={story} />
 			<RenamePassageButton
 				disabled={disabled}
 				onRename={handleRename}
@@ -115,6 +117,7 @@ export const PassageToolbar: React.FC<PassageToolbarProps> = props => {
 				story={story}
 			/>
 			<TestPassageButton passage={passage} story={story} />
+			<DebugToggleButton />
 		</ButtonBar>
 	);
 };

@@ -1,5 +1,6 @@
 import {v4 as uuid} from '@lukeed/uuid';
 import {builtins} from './defaults';
+import {repairBuiltinFormatUrls} from './repair-builtin-urls';
 import {
 	StoryFormat,
 	StoryFormatsAction,
@@ -35,6 +36,8 @@ export const reducer: React.Reducer<StoryFormatsState, StoryFormatsAction> = (
 
 				return keep;
 			});
+
+			repairBuiltinFormatUrls(result, builtinFormats);
 
 			// Add any builtins not present.
 

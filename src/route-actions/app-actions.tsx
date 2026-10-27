@@ -6,6 +6,7 @@ import {ButtonBar} from '../components/container/button-bar';
 import {IconButton} from '../components/control/icon-button';
 import {AboutTwineDialog, AppPrefsDialog, useDialogsContext} from '../dialogs';
 import {StoryFormatsDialog} from '../dialogs/story-formats/story-formats';
+import {ColorPrefsButton} from './color-prefs-button';
 
 export const AppActions: React.FC = () => {
 	const {dispatch} = useDialogsContext();
@@ -19,6 +20,7 @@ export const AppActions: React.FC = () => {
 				label={t('routeActions.app.preferences')}
 				onClick={() => dispatch({type: 'addDialog', component: AppPrefsDialog})}
 			/>
+			<ColorPrefsButton />
 			<IconButton
 				disabled={history.location.pathname === '/story-formats'}
 				icon={<IconFileCode />}

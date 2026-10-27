@@ -1,4 +1,5 @@
 import {usePublishing} from './use-publishing';
+import {usePrefsContext} from './prefs';
 import {isElectronRenderer} from '../util/is-electron';
 import {TwineElectronWindow} from '../electron/shared';
 
@@ -14,6 +15,7 @@ export interface UseStoryLaunchProps {
  */
 export function useStoryLaunch(): UseStoryLaunchProps {
 	const {proofStory, publishStory} = usePublishing();
+	const {prefs} = usePrefsContext();
 
 	if (isElectronRenderer()) {
 		const {twineElectron} = window as TwineElectronWindow;
@@ -40,7 +42,7 @@ export function useStoryLaunch(): UseStoryLaunchProps {
 			testStory: async (storyId, startPassageId) => {
 				twineElectron.openHtmlWithScratchFile(
 					await publishStory(storyId, {
-						formatOptions: 'debug',
+						formatOptions: prefs.testDebug ? 'debug' : '',
 						startId: startPassageId
 					}),
 					`test-${storyId}.html`

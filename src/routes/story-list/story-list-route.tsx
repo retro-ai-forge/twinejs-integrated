@@ -2,6 +2,7 @@ import orderBy from 'lodash/orderBy';
 import * as React from 'react';
 import {useTranslation} from 'react-i18next';
 import {MainContent} from '../../components/container/main-content';
+import {CloudAuthBanner} from '../../components/cloud-auth';
 import {SafariWarningCard} from '../../components/error';
 import {
 	AppDonationDialog,
@@ -67,6 +68,7 @@ export const InnerStoryListRoute: React.FC = () => {
 
 	return (
 		<div className="story-list-route">
+			<CloudAuthBanner />
 			<StoryListToolbar selectedStories={selectedStories} />
 			<ClickAwayListener
 				ignoreSelector=".story-card"

@@ -24,13 +24,23 @@ export const defaults = (): PrefsState => ({
 		version: '1.0.0'
 	},
 	storyFormat: {
-		name: 'Harlowe',
-		version: '3.3.9'
+		name: 'SugarCube',
+		version: '2.37.3'
 	},
 	storyFormatListFilter: 'current',
 	storyListSort: 'name',
 	storyListTagFilter: [],
 	storyTagColors: {},
+	testDebug: true,
+	canvasBackgroundColor: '',
+	canvasGridColor: '',
+	canvasArrowColor: '',
+	nodeBackgroundColor: '',
+	nodeTextColor: '',
+	nodeActiveColor: '',
+	guiBackgroundColor: '',
+	guiTextColor: '',
+	guiInactiveTextColor: '',
 	useCodeMirror: true,
 	welcomeSeen: false,
 });

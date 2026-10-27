@@ -8,6 +8,7 @@ import {SelectableCard} from '../container/card/selectable-card';
 import {Passage, TagColors} from '../../store/stories';
 import {TagStripe} from '../tag/tag-stripe';
 import {passageIsEmpty} from '../../util/passage-is-empty';
+import {PassageThumbnail} from './passage-thumbnail';
 import './passage-card.css';
 import { TagBadges } from '../tag/tag-badges';
 
@@ -120,6 +121,7 @@ export const PassageCard: React.FC<PassageCardProps> = React.memo(props => {
 					selected={passage.selected}
 				>
 					{tagDisplay === 'color' && <TagStripe tagColors={tagColors} tags={passage.tags} />}
+					<PassageThumbnail passage={passage} />
 					<h2>{passage.name}</h2>
 					<CardContent>{excerpt}</CardContent>
 					{tagDisplay === 'name' && <TagBadges tagColors={tagColors} tags={passage.tags} />}

@@ -341,7 +341,7 @@
 				"snapToGrid": "Snap to Grid",
 				"startStoryHere": "Start Story Here",
 				"stylesheet": "Stylesheet",
-				"testFromHere": "Test From Here"
+				"testFromHere": "Run here"
 			},
 			"topBar": {
 				"editJavaScript": "Edit Story JavaScript",

@@ -1,0 +1,177 @@
+.hotspot-editor-hint {
+	color: var(--gray);
+	font-size: 90%;
+	margin-top: 0;
+}
+
+.hotspot-editor-empty {
+	color: var(--gray);
+	font-style: italic;
+}
+
+.hotspot-editor-body {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--grid-size);
+	align-items: flex-start;
+}
+
+.hotspot-editor-stage {
+	position: relative;
+	display: inline-block;
+	flex: 1 1 320px;
+	max-width: 600px;
+	user-select: none;
+	touch-action: none;
+}
+
+.hotspot-editor-stage img {
+	display: block;
+	width: 100%;
+	height: auto;
+	pointer-events: none;
+}
+
+.hotspot-editor-overlay {
+	position: absolute;
+	inset: 0;
+	cursor: crosshair;
+}
+
+.hotspot-box {
+	position: absolute;
+	border: 2px solid var(--gray);
+	box-sizing: border-box;
+	cursor: move;
+	min-width: 6px;
+	min-height: 6px;
+}
+
+.hotspot-box.selected {
+	box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor;
+	z-index: 2;
+}
+
+.hotspot-box.missing {
+	border-style: dashed;
+	border-color: var(--red, #c00) !important;
+	background: rgba(204, 0, 0, 0.2) !important;
+}
+
+.hotspot-box.drafting {
+	border-style: dashed;
+	border-color: #fff;
+	background: rgba(255, 255, 255, 0.15);
+	pointer-events: none;
+}
+
+.hotspot-box-badge {
+	position: absolute;
+	top: -2px;
+	left: -2px;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 4px;
+	font-size: 11px;
+	line-height: 18px;
+	text-align: center;
+	color: #fff;
+	font-weight: bold;
+}
+
+.hotspot-box-handle {
+	position: absolute;
+	right: -5px;
+	bottom: -5px;
+	width: 10px;
+	height: 10px;
+	border: 1px solid #fff;
+	cursor: nwse-resize;
+}
+
+.hotspot-editor-list {
+	flex: 1 1 260px;
+	min-width: 240px;
+	display: flex;
+	flex-direction: column;
+	gap: calc(var(--grid-size) / 2);
+}
+
+.hotspot-row {
+	display: flex;
+	align-items: flex-start;
+	gap: calc(var(--grid-size) / 2);
+	padding: calc(var(--grid-size) / 2);
+	border: 1px solid transparent;
+	border-radius: 2px;
+}
+
+.hotspot-row.selected {
+	border-color: var(--very-light-gray, #ddd);
+	background: var(--faintest-gray, #f6f6f6);
+}
+
+.hotspot-row-badge {
+	flex-shrink: 0;
+	min-width: 20px;
+	height: 20px;
+	padding: 0 5px;
+	font-size: 12px;
+	line-height: 20px;
+	text-align: center;
+	color: #fff;
+	font-weight: bold;
+	border-radius: 2px;
+}
+
+.hotspot-row-fields {
+	flex-grow: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.hotspot-row-fields input,
+.hotspot-row-fields select {
+	width: 100%;
+	font-size: 90%;
+}
+
+.hotspot-row-fields select.missing {
+	color: var(--red, #c00);
+	border-color: var(--red, #c00);
+}
+
+/* Read-only overlay shown in the passage editor's image preview. */
+.hotspot-preview {
+	position: relative;
+	display: inline-block;
+	max-width: 100%;
+}
+
+.hotspot-preview img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+}
+
+.hotspot-preview-box {
+	position: absolute;
+	box-sizing: border-box;
+	border: 2px solid;
+	pointer-events: none;
+}
+
+.hotspot-preview-box span {
+	position: absolute;
+	top: -2px;
+	left: -2px;
+	min-width: 16px;
+	height: 16px;
+	padding: 0 3px;
+	font-size: 10px;
+	line-height: 16px;
+	text-align: center;
+	color: #fff;
+	font-weight: bold;
+}

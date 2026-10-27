@@ -1,6 +1,7 @@
 import * as React from 'react';
 import {useTranslation} from 'react-i18next';
 import {Story} from '../../store/stories';
+import {CloudSyncBadge} from '../../store/persistence/cloud-sync';
 import {Color} from '../../util/color';
 import {CardContent, CardProps} from '../container/card';
 import {SelectableCard} from '../container/card/selectable-card';
@@ -33,6 +34,7 @@ export const StoryCard: React.FC<StoryCardProps> = props => {
 
 	return (
 		<div className="story-card">
+			<CloudSyncBadge story={story} />
 			<SelectableCard
 				{...otherProps}
 				label={story.name}

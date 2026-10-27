@@ -1,0 +1,97 @@
+/*
+ * Wudlands integration styles.
+ *
+ * All CSS the Wudlands integration adds to EXISTING upstream components lives
+ * here instead of being appended to the upstream `.css` files, so those files
+ * stay pristine and don't conflict when pulling upstream Twine. Imported once,
+ * last, from app.tsx (after color-overrides.css).
+ *
+ * Every rule below targets either a brand-new class name or a property upstream
+ * never sets on that selector, so load order has no effect on behavior.
+ */
+
+/* --- Passage card thumbnail (src/components/passage/passage-card.css) --- */
+.passage-card-thumb {
+	display: block;
+	width: 100%;
+	height: auto;
+	border-radius: 2px;
+	margin-bottom: calc(var(--grid-size) / 4);
+	image-rendering: pixelated;
+}
+
+.structure-passage-cards .passage-card-thumb {
+	display: none;
+}
+
+/* --- Passage edit image preview (src/dialogs/passage-edit/passage-edit-contents.css) --- */
+.passage-edit-image-preview {
+	flex-shrink: 0;
+}
+
+.passage-edit-image-preview img {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+/* --- Passage edit stack: mobile-like editing column (src/dialogs/passage-edit/passage-edit-stack.css) --- */
+/* Narrow, mobile-like editing column so a 600px image preview fills the width
+   and authors get a feel for the phone screen the game runs on. */
+.passage-edit-stack {
+	max-width: 400px;
+	margin-left: auto;
+}
+
+/* When maximized the editor should still use the full available width. */
+.maximized .passage-edit-stack {
+	max-width: none;
+}
+
+/* --- Story card cloud-sync badge (src/components/story/story-card.css) --- */
+/* The badge is absolutely positioned in the card's bottom-right corner (where
+   the old flex footer put it), so the upstream StoryCard JSX needs no footer
+   restructure — just a one-line <CloudSyncBadge> mount. */
+.story-card {
+	position: relative;
+}
+
+.story-card .cloud-sync-badge {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	position: absolute;
+	right: var(--grid-size);
+	bottom: var(--grid-size);
+	z-index: 1;
+}
+
+.story-card .cloud-idle {
+	color: #888;
+	opacity: 0.5;
+}
+
+.story-card .cloud-synced {
+	color: #4caf50;
+}
+
+.story-card .cloud-syncing {
+	color: #ff9800;
+}
+
+.story-card .cloud-syncing svg {
+	animation: spin-sync 1s linear infinite;
+}
+
+.story-card .cloud-error {
+	color: #f44336;
+}
+
+@keyframes spin-sync {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}

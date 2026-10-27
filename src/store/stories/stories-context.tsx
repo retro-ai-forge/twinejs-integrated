@@ -1,6 +1,7 @@
 import * as React from 'react';
 import useThunkReducer from 'react-hook-thunk-reducer';
 import {usePersistence} from '../persistence/use-persistence';
+import {useQueueStorySync} from '../persistence/cloud-sync';
 import {reducer} from './reducer';
 import {
 	StoriesContextProps,
@@ -23,6 +24,7 @@ export const StoriesContextProvider: React.FC = props => {
 	const {stories: storiesPersistence} = usePersistence();
 	const {formats} = useStoryFormatsContext();
 	const {reportError} = useStoreErrorReporter();
+	const queueStorySync = useQueueStorySync();
 	const persistedReducer: React.Reducer<
 		StoriesState,
 		StoriesAction
@@ -36,9 +38,11 @@ export const StoriesContextProvider: React.FC = props => {
 				reportError(error as Error, 'store.errors.cantPersistStories');
 			}
 
+			queueStorySync(newState, action);
+
 			return newState;
 		},
-		[formats, reportError, storiesPersistence]
+		[formats, reportError, storiesPersistence, queueStorySync]
 	);
 	const [stories, dispatch] = useThunkReducer(persistedReducer, []);
 

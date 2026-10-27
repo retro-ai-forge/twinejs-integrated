@@ -51,6 +51,10 @@ export interface PrefsState {
 	 */
 	editorCursorBlinks: boolean;
 	/**
+	 * Whether "Test from here" launches with the story format's debug mode on.
+	 */
+	testDebug: boolean;
+	/**
 	 * Timestamp when the app was first run.
 	 */
 	firstRunTime: number;
@@ -112,6 +116,15 @@ export interface PrefsState {
 	 * Colors for story tags.
 	 */
 	storyTagColors: Record<string, Color>;
+	canvasBackgroundColor: string;
+	canvasGridColor: string;
+	canvasArrowColor: string;
+	nodeBackgroundColor: string;
+	nodeTextColor: string;
+	nodeActiveColor: string;
+	guiBackgroundColor: string;
+	guiTextColor: string;
+	guiInactiveTextColor: string;
 	/**
 	 * Use CodeMirror for text editing?
 	 */

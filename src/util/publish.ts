@@ -2,6 +2,8 @@ import escape from 'lodash/escape';
 import {Passage, Story} from '../store/stories';
 import {AppInfo} from './app-info';
 import {i18n} from './i18n';
+import {rewriteImgMacros} from './twine-images';
+import {wudlandsScript, wudlandsStylesheet} from './wudlands-runtime';
 
 export interface PublishOptions {
 	/**
@@ -57,7 +59,7 @@ export function publishPassage(passage: Passage, localId: number) {
 		`tags="${escape(passage.tags.join(' '))}" ` +
 		`position="${passage.left},${passage.top}" ` +
 		`size="${passage.width},${passage.height}">` +
-		`${escape(passage.text)}</tw-passagedata>`
+		`${escape(rewriteImgMacros(passage.text, passage.story))}</tw-passagedata>`
 	);
 }
 
@@ -123,11 +125,11 @@ export function publishStory(
 		`zoom="${escape(story.zoom.toString())}" hidden>` +
 		`<style role="stylesheet" id="twine-user-stylesheet" ` +
 		`type="text/twine-css">` +
-		story.stylesheet +
+		wudlandsStylesheet(story.stylesheet) +
 		`</style>` +
 		`<script role="script" id="twine-user-script" ` +
 		`type="text/twine-javascript">` +
-		story.script +
+		wudlandsScript(story.script) +
 		`</script>` +
 		tagData +
 		passageData +

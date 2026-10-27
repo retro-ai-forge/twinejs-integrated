@@ -12,7 +12,7 @@
 }
 
 .story-format-item.highlighted {
-	background-color: var(--faint-blue);
+	background-color: var(--node-active-color, var(--faint-blue));
 }
 
 .story-format-item .story-format-image {
