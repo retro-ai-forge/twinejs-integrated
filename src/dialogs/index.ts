@@ -1,6 +1,7 @@
 export * from './about-twine';
 export * from './app-donation';
 export * from './app-prefs';
+export * from './color-prefs-dialog';
 export * from './context';
 export * from './context/dialogs';
 export * from './dialogs.types';

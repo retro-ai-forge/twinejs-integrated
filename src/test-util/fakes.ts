@@ -140,6 +140,16 @@ export function fakePrefs(overrides?: Partial<PrefsState>): PrefsState {
 		storyListSort: faker.helpers.arrayElement(['date', 'name']),
 		storyListTagFilter: [],
 		storyTagColors: {[tags[0]]: 'red', [tags[1]]: 'green', [tags[2]]: 'blue'},
+		canvasBackgroundColor: '',
+		canvasGridColor: '',
+		nodeBackgroundColor: '',
+		nodeTextColor: '',
+		nodeActiveColor: '',
+		guiBackgroundColor: '',
+		guiTextColor: '',
+		guiInactiveTextColor: '',
+		editBackgroundColor: '',
+		editTextColor: '',
 		// Changing this preference should be explicit in a test because it affects
 		// editorCursorBlinks in some contexts.
 		useCodeMirror: true,

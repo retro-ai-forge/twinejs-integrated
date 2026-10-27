@@ -1,0 +1,101 @@
+/* Custom color overrides — all values come from CSS custom properties
+   set by ColorSettingsSetter. When unset, var() falls back to the
+   original theme value, so nothing changes by default. */
+
+/* Canvas */
+.passage-map {
+	background-color: var(--canvas-bg-color, var(--faint-blue));
+}
+
+/* When --canvas-grid-image is set by ColorSettingsSetter, it overrides
+   the default graph-paper SVG via higher specificity. */
+:root[style*="--canvas-grid-image"] .passage-map {
+	background-image: var(--canvas-grid-image);
+}
+
+/* Nodes */
+.passage-card .card {
+	background: var(--node-bg-color, var(--white));
+}
+
+.passage-card h2,
+.passage-card .card-content {
+	color: var(--node-text-color);
+}
+
+/* Selected/active node */
+.passage-map .selectable-card.selected .card {
+	background: var(--node-active-color, var(--light-blue));
+}
+
+/* Connections / arrows */
+
+/* GUI — toolbar, dialogs, sidebar */
+.route-toolbar {
+	background: var(--gui-bg-color, var(--white));
+}
+
+.main-content {
+	background: var(--gui-bg-color, var(--off-white));
+}
+
+.card {
+	background: var(--gui-bg-color, var(--white));
+}
+
+.route-toolbar .route-toolbar-tab {
+	color: var(--gui-text-color, var(--dark-gray));
+}
+
+body {
+	color: var(--gui-text-color, var(--dark-gray));
+}
+
+.passage-card .card-content,
+.route-toolbar .route-toolbar-tab:not(.selected),
+.icon-button,
+.icon-link {
+	color: var(--gui-inactive-text-color, var(--dark-gray));
+}
+
+/* Story preview card — use node colors */
+.story-card .card {
+	background: var(--node-bg-color, var(--white));
+}
+
+.story-card .selectable-card.selected .card {
+	background: var(--node-active-color, var(--light-blue));
+}
+
+.story-card h2,
+.story-card p,
+.story-card .card-content {
+	color: var(--node-text-color);
+}
+
+/* Passage edit dialog — header uses GUI colors, editor uses edit colors */
+.passage-edit-stack .dialog-card-header {
+	color: var(--gui-text-color, var(--dark-gray));
+}
+
+.passage-edit-stack .dialog-editor {
+	background: var(--edit-bg-color, var(--white));
+	color: var(--edit-text-color);
+}
+
+.passage-edit-stack .dialog-editor .CodeMirror {
+	background: var(--edit-bg-color, var(--white));
+	color: var(--edit-text-color);
+}
+
+.passage-edit-stack .dialog-editor textarea {
+	background: var(--edit-bg-color, var(--white));
+	color: var(--edit-text-color);
+}
+
+/* Dialog card grid for color prefs */
+.color-prefs-dialog .card-content {
+	display: grid;
+	grid-gap: var(--grid-size);
+	grid-template-columns: 1fr 1fr;
+}

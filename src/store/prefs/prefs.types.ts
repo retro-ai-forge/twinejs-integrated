@@ -112,6 +112,16 @@ export interface PrefsState {
 	 * Colors for story tags.
 	 */
 	storyTagColors: Record<string, Color>;
+	canvasBackgroundColor: string;
+	canvasGridColor: string;
+	nodeBackgroundColor: string;
+	nodeTextColor: string;
+	nodeActiveColor: string;
+	guiBackgroundColor: string;
+	guiTextColor: string;
+	guiInactiveTextColor: string;
+	editBackgroundColor: string;
+	editTextColor: string;
 	/**
 	 * Use CodeMirror for text editing?
 	 */
