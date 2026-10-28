@@ -36,6 +36,36 @@ export const reducer: React.Reducer<StoryFormatsState, StoryFormatsAction> = (
 				return keep;
 			});
 
+			// Refresh the URL of built-in formats whose definition changed (e.g. when
+			// the app's base path changes). Matching is by name + version, so a
+			// persisted record can keep a stale URL; update it and force a reload.
+			for (let i = 0; i < result.length; i++) {
+				const format = result[i];
+
+				if (format.userAdded) {
+					continue;
+				}
+
+				const builtinFormat = builtinFormats.find(
+					f => f.name === format.name && f.version === format.version
+				);
+
+				if (builtinFormat && builtinFormat.url !== format.url) {
+					console.info(
+						`Repairing story format ${format.name} ${format.version} URL ` +
+							`(was ${format.url}, now ${builtinFormat.url})`
+					);
+					result[i] = {
+						id: format.id,
+						name: format.name,
+						version: format.version,
+						userAdded: format.userAdded,
+						url: builtinFormat.url,
+						loadState: 'unloaded'
+					};
+				}
+			}
+
 			// Add any builtins not present.
 
 			for (const builtinFormat of builtinFormats) {

@@ -7,7 +7,10 @@ import {VitePWA} from 'vite-plugin-pwa';
 import packageJson from './package.json' with {type: 'json'};
 
 export default defineConfig({
-	base: './',
+	// Served under /twine/ inside the Wudlands app (both the dev proxy and the
+	// static production build). Override with VITE_BASE for other targets
+	// (e.g. Electron, which wants './').
+	base: process.env.VITE_BASE ?? '/twine/',
 	build: {
 		outDir: 'dist/web',
 		target: browserslistToEsbuild(['>0.2%', 'not dead', 'not op_mini all'])
@@ -55,6 +58,19 @@ export default defineConfig({
 		})
 	],
 	server: {
-		open: true
+		// Don't auto-open a tab: Twine is launched alongside the Wudlands app via
+		// the root `npm run dev`, and is reached at /twine/ (proxied to this server
+		// by Next) through the "Open the Story Editor" link on the Create → Tools
+		// for Artists page.
+		open: false,
+		// Allow the Next dev server (different origin/port) to proxy us.
+		cors: true,
+		// The page is served from the Next origin, so point the HMR client straight
+		// at this vite server instead of the page origin.
+		hmr: {host: 'localhost', clientPort: 5173},
+		// Poll instead of using inotify watchers, to avoid the system file-watcher
+		// limit (ENOSPC) when running next + vite together. node_modules is ignored
+		// by default, so polling only covers source files.
+		watch: {usePolling: true, interval: 1000}
 	}
 });

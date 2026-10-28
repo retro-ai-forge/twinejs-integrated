@@ -9,7 +9,7 @@ let requestQueue = Promise.resolve();
  */
 export async function fetchStoryFormatProperties(
 	url: string,
-	timeout = 2000
+	timeout = 15000
 ): Promise<StoryFormatProperties> {
 	return new Promise(
 		(resolve, reject) =>
