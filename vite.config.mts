@@ -6,7 +6,7 @@ import {nodePolyfills} from 'vite-plugin-node-polyfills';
 import {VitePWA} from 'vite-plugin-pwa';
 import packageJson from './package.json' with {type: 'json'};
 
-export default defineConfig({
+export default defineConfig(({command}) => ({
 	// Served under /twine/ inside the Wudlands app (both the dev proxy and the
 	// static production build). Override with VITE_BASE for other targets
 	// (e.g. Electron, which wants './').
@@ -22,13 +22,21 @@ export default defineConfig({
 		'process.env.VITE_APP_VERSION': JSON.stringify(packageJson.version)
 	},
 	plugins: [
-		checker({
-			eslint: {lintCommand: 'eslint src'},
-			overlay: {
-				initialIsOpen: false
-			},
-			typescript: true
-		}),
+		// Type/lint feedback only during dev. In a production build it would crash:
+		// nested inside the Wudlands repo, ESLint resolves the parent's flat config
+		// (eslint-config-next) and its rushstack patch is incompatible here. `tsc`
+		// still runs before `vite build` (see build:web), so types stay checked.
+		...(command === 'serve'
+			? [
+					checker({
+						eslint: {lintCommand: 'eslint src'},
+						overlay: {
+							initialIsOpen: false
+						},
+						typescript: true
+					})
+			  ]
+			: []),
 		nodePolyfills(
 			// We only need a `global` injected, for CodeMirror.
 			{include: [], globals: {global: true}}
@@ -73,4 +81,4 @@ export default defineConfig({
 		// by default, so polling only covers source files.
 		watch: {usePolling: true, interval: 1000}
 	}
-});
+}));
