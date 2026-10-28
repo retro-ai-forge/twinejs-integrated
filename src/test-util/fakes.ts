@@ -149,8 +149,6 @@ export function fakePrefs(overrides?: Partial<PrefsState>): PrefsState {
 		guiBackgroundColor: '',
 		guiTextColor: '',
 		guiInactiveTextColor: '',
-		editBackgroundColor: '',
-		editTextColor: '',
 		// Changing this preference should be explicit in a test because it affects
 		// editorCursorBlinks in some contexts.
 		useCodeMirror: true,

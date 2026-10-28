@@ -40,8 +40,6 @@ export const defaults = (): PrefsState => ({
 	guiBackgroundColor: '',
 	guiTextColor: '',
 	guiInactiveTextColor: '',
-	editBackgroundColor: '',
-	editTextColor: '',
 	useCodeMirror: true,
 	welcomeSeen: false,
 });

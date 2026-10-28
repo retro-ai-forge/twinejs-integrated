@@ -30,8 +30,10 @@ export function ColorSettingsSetter() {
 			['--gui-bg-color', prefs.guiBackgroundColor],
 			['--gui-text-color', prefs.guiTextColor],
 			['--gui-inactive-text-color', prefs.guiInactiveTextColor],
-			['--edit-bg-color', prefs.editBackgroundColor],
-			['--edit-text-color', prefs.editTextColor],
+			// Node edit colors are not separate: reuse the node active color as the
+			// edit background and the node text color as the edit text.
+			['--edit-bg-color', prefs.nodeActiveColor],
+			['--edit-text-color', prefs.nodeTextColor],
 		];
 
 		for (const [prop, value] of vars) {
@@ -57,8 +59,6 @@ export function ColorSettingsSetter() {
 		prefs.guiBackgroundColor,
 		prefs.guiTextColor,
 		prefs.guiInactiveTextColor,
-		prefs.editBackgroundColor,
-		prefs.editTextColor,
 	]);
 
 	return null;

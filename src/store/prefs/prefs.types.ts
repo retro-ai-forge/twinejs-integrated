@@ -121,8 +121,6 @@ export interface PrefsState {
 	guiBackgroundColor: string;
 	guiTextColor: string;
 	guiInactiveTextColor: string;
-	editBackgroundColor: string;
-	editTextColor: string;
 	/**
 	 * Use CodeMirror for text editing?
 	 */

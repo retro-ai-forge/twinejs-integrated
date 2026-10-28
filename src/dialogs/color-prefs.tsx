@@ -90,23 +90,6 @@ export function ColorPrefs() {
 					onReset={() => dispatch(setPref('nodeTextColor', ''))}
 				/>
 			</div>
-			<p className="color-section-label">Node Edit Colors</p>
-			<div className="color-picker-row">
-				<ColorPicker
-					label="Background"
-					value={prefs.editBackgroundColor}
-					fallback="#f8f8f8"
-					onChange={v => dispatch(setPref('editBackgroundColor', v))}
-					onReset={() => dispatch(setPref('editBackgroundColor', ''))}
-				/>
-				<ColorPicker
-					label="Text"
-					value={prefs.editTextColor}
-					fallback="#555555"
-					onChange={v => dispatch(setPref('editTextColor', v))}
-					onReset={() => dispatch(setPref('editTextColor', ''))}
-				/>
-			</div>
 			<p className="color-section-label">GUI Colors</p>
 			<div className="color-picker-row">
 				<ColorPicker
@@ -143,8 +126,6 @@ export function ColorPrefs() {
 					dispatch(setPref('guiBackgroundColor', ''));
 					dispatch(setPref('guiTextColor', ''));
 					dispatch(setPref('guiInactiveTextColor', ''));
-					dispatch(setPref('editBackgroundColor', ''));
-					dispatch(setPref('editTextColor', ''));
 				}}
 			>
 				Default Colors
