@@ -2,6 +2,7 @@ import * as React from 'react';
 import {useParams} from 'react-router-dom';
 import {MainContent} from '../../components/container/main-content';
 import {DocumentTitle} from '../../components/document-title/document-title';
+import {SubmitReviewBanner} from '../../components/submit-review';
 import {DialogsContextProvider} from '../../dialogs';
 import { usePrefsContext } from '../../store/prefs';
 import {storyWithId} from '../../store/stories';
@@ -42,6 +43,7 @@ export const InnerStoryEditRoute: React.FC = () => {
 	return (
 		<div className="story-edit-route">
 			<DocumentTitle title={story.name} />
+			<SubmitReviewBanner story={story} />
 			<StoryEditToolbar
 				getCenter={getCenter}
 				onOpenFuzzyFinder={() => setFuzzyFinderOpen(true)}

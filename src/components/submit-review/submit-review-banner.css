@@ -1,0 +1,64 @@
+.submit-review-banner {
+	position: fixed;
+	top: 6px;
+	right: 50%;
+	transform: translateX(50%);
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 10px;
+	font-size: 0.75rem;
+	border-radius: 4px;
+	z-index: 10000;
+	background: rgba(33, 150, 243, 0.15);
+	color: #2196f3;
+	border: 1px solid rgba(33, 150, 243, 0.3);
+}
+
+.submit-review-btn {
+	background: rgba(33, 150, 243, 0.25);
+	color: inherit;
+	border: 1px solid rgba(33, 150, 243, 0.4);
+	border-radius: 3px;
+	padding: 1px 8px;
+	font-size: 0.75rem;
+	cursor: pointer;
+	font-weight: bold;
+}
+
+.submit-review-btn:hover {
+	background: rgba(33, 150, 243, 0.4);
+}
+
+.submit-review-btn:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.submit-review-submitted {
+	background: rgba(76, 175, 80, 0.15);
+	color: #4caf50;
+	border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.submit-review-warn {
+	background: rgba(255, 152, 0, 0.15);
+	color: #ff9800;
+	border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.submit-review-error {
+	background: rgba(244, 67, 54, 0.15);
+	color: #f44336;
+	border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.submit-review-btn-details {
+	background: rgba(255, 152, 0, 0.25);
+	border-color: rgba(255, 152, 0, 0.4);
+}
+
+.submit-review-format-note {
+	opacity: 0.6;
+	font-style: italic;
+}

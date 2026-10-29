@@ -106,6 +106,61 @@ body {
 	border-left-color: var(--edit-text-color);
 }
 
+/* Global links — replace dark-blue with inactive text */
+a {
+	color: var(--gui-inactive-text-color, var(--dark-blue));
+}
+
+a:visited {
+	color: var(--gui-inactive-text-color, var(--dark-purple));
+}
+
+/* Primary / selected buttons & links — replace dark-blue with inactive text */
+.icon-button.variant-primary,
+.icon-link.variant-primary {
+	color: var(--gui-inactive-text-color, var(--dark-blue));
+}
+
+.icon-button.variant-primary:hover:not(:disabled),
+.icon-link.variant-primary:hover:not(:disabled) {
+	color: var(--gui-inactive-text-color, var(--dark-blue));
+}
+
+.icon-button.variant-primary:active:not(:disabled),
+.icon-link.variant-primary:active:not(:disabled) {
+	color: var(--gui-inactive-text-color, var(--dark-blue));
+}
+
+.icon-button.selected,
+.icon-link.selected {
+	color: var(--gui-inactive-text-color, var(--dark-blue));
+}
+
+/* Selected toolbar tab underline */
+.route-toolbar .route-toolbar-tab.selected {
+	background: linear-gradient(
+		to top,
+		var(--gui-inactive-text-color, var(--blue)) 0,
+		var(--gui-inactive-text-color, var(--blue)) 2px,
+		transparent 2px
+	);
+}
+
+/* Fuzzy finder — icon and selected heading */
+.fuzzy-finder-result svg {
+	color: var(--gui-inactive-text-color, var(--dark-blue));
+}
+
+.fuzzy-finder-result.selected .heading {
+	color: var(--gui-inactive-text-color, var(--dark-blue));
+}
+
+/* Badges — bubble labels (e.g. "Built-In", "Default Format") */
+.badge {
+	background-color: var(--node-bg-color, var(--off-white));
+	color: var(--gui-inactive-text-color, inherit);
+}
+
 /* Dialog card grid for color prefs */
 .color-prefs-dialog .card-content {
 	display: grid;

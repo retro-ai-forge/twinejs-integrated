@@ -1,6 +1,7 @@
 import * as React from 'react';
 import {LoadingCurtain} from '../components/loading-curtain';
 import {usePersistence} from './persistence/use-persistence';
+import {useCloudSync} from './persistence/cloud-sync';
 import {usePrefsContext} from './prefs';
 import {useStoriesContext} from './stories';
 import {useStoryFormatsContext} from './story-formats';
@@ -12,12 +13,15 @@ export const StateLoader: React.FC = ({children}) => {
 	const [prefsRepaired, setPrefsRepaired] = React.useState(false);
 	const [formatsRepaired, setFormatsRepaired] = React.useState(false);
 	const [storiesRepaired, setStoriesRepaired] = React.useState(false);
+	const [cloudMerged, setCloudMerged] = React.useState(false);
 	const {dispatch: prefsDispatch, prefs: prefsState} = usePrefsContext();
-	const {dispatch: storiesDispatch} = useStoriesContext();
+	const {dispatch: storiesDispatch, stories: storiesState} =
+		useStoriesContext();
 	const {dispatch: formatsDispatch, formats: formatsState} =
 		useStoryFormatsContext();
 	const repairStories = useStoriesRepair();
 	const {prefs, stories, storyFormats} = usePersistence();
+	const {mergeFromCloud} = useCloudSync();
 
 	// Done in steps so that the repair action can see the inited state, and then
 	// each repair action can see the results of the preceding ones.
@@ -85,6 +89,15 @@ export const StateLoader: React.FC = ({children}) => {
 		storiesDispatch,
 		storiesRepaired
 	]);
+
+	React.useEffect(() => {
+		if (storiesRepaired && !cloudMerged) {
+			setCloudMerged(true);
+			mergeFromCloud(storiesState, storiesDispatch).catch(err =>
+				console.warn('[cloud-sync] merge failed:', err)
+			);
+		}
+	}, [storiesRepaired, cloudMerged, mergeFromCloud, storiesState, storiesDispatch]);
 
 	return inited && formatsRepaired && prefsRepaired && storiesRepaired ? (
 		<>{children}</>

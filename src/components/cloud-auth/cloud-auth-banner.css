@@ -1,0 +1,51 @@
+.cloud-auth-banner {
+	position: fixed;
+	top: 6px;
+	right: 50%;
+	transform: translateX(50%);
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 10px;
+	font-size: 0.75rem;
+	border-radius: 4px;
+	z-index: 10000;
+}
+
+.cloud-auth-ok {
+	background: rgba(76, 175, 80, 0.15);
+	color: #4caf50;
+	border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.cloud-auth-warn {
+	background: rgba(255, 152, 0, 0.15);
+	color: #ff9800;
+	border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.cloud-auth-link {
+	color: inherit;
+	font-weight: bold;
+	text-decoration: underline;
+}
+
+.cloud-auth-link:hover {
+	opacity: 0.8;
+}
+
+.cloud-auth-dismiss {
+	margin-left: auto;
+	background: none;
+	border: none;
+	color: inherit;
+	font-size: 1.1rem;
+	cursor: pointer;
+	padding: 0 4px;
+	opacity: 0.6;
+	line-height: 1;
+}
+
+.cloud-auth-dismiss:hover {
+	opacity: 1;
+}

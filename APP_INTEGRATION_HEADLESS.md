@@ -2033,6 +2033,158 @@ When the player is inside a side story, the server skips random injection — no
 | Difficulty scaling | `min_level` filter — harder side stories for higher-level characters |
 | Balance | `chance` percentage tunable per side story |
 
+## Story Persistence — Cloud Sync via Firestore
+
+The Twine editor stores all stories in **`window.localStorage`** using individual JSON keys. This works for quick editing but has critical limitations:
+
+- **5 MB cap** per origin (most browsers), ~10 MB on some
+- **Safari evicts localStorage after 7 days** of inactivity (ITP policy)
+- Stories are lost when the user clears browser data
+- No cross-device access
+
+### Current localStorage key structure
+
+| Key pattern | Content |
+|---|---|
+| `twine-stories` | Comma-separated list of story UUIDs |
+| `twine-stories-{id}` | JSON of one Story (metadata only, passages stripped) |
+| `twine-passages` | Comma-separated list of passage UUIDs |
+| `twine-passages-{id}` | JSON of one Passage (name, text, tags, position) |
+| `twine-prefs` | Comma-separated list of pref UUIDs |
+| `twine-prefs-{id}` | JSON `{id, name, value}` per preference |
+| `twine-storyformats` | Comma-separated list of format UUIDs |
+| `twine-storyformats-{id}` | JSON per StoryFormat |
+
+Every change flows through a **save middleware** (`src/store/persistence/local-storage/stories/save-middleware.ts`) that writes to localStorage on each Redux-style action. The existing `StorageQuota` component (`src/components/storage-quota/storage-quota.tsx`) uses `navigator.storage.estimate()` to show remaining space.
+
+### Realistic story sizes
+
+| Story complexity | Passages | Estimated size |
+|---|---|---|
+| Small (tutorial/demo) | 10–30 | 10–50 KB |
+| Medium (short adventure) | 50–150 | 100–500 KB |
+| Large (full game) | 300–800 | 500 KB – 3 MB |
+| Very large | 1000+ | 3–5 MB (hits localStorage limit) |
+
+### Cloud storage design — Firestore collection
+
+Store stories in the existing Firestore (MongoDB-compatible) database. A single MongoDB document supports up to 16 MB, so even large stories fit easily.
+
+**Collection: `twine_stories`**
+
+```json
+{
+  "address": "user-wallet-address",
+  "storyId": "uuid",
+  "ifid": "B9F4A3E1-...",
+  "name": "Desert Crossing",
+  "lastUpdate": "2026-10-28T14:30:00Z",
+  "storyData": {
+    "storyFormat": "SugarCube",
+    "storyFormatVersion": "2.37.3",
+    "startPassage": "passage-uuid",
+    "stylesheet": "...",
+    "script": "...",
+    "tags": [],
+    "tagColors": {},
+    "snapToGrid": true,
+    "zoom": 0.6
+  },
+  "passages": [
+    {
+      "id": "passage-uuid",
+      "name": "Start",
+      "text": "<<link 'Enter'>><<goto 'Room1'>><</link>>",
+      "tags": ["start"],
+      "left": 75, "top": 25,
+      "width": 100, "height": 100
+    }
+  ],
+  "sizeBytes": 487320
+}
+```
+
+Keyed by `(address, storyId)` — same pattern as the `characters` collection. The `ifid` field is indexed for cross-reference with the headless game system.
+
+### Sync strategy — localStorage as primary, DB as backup
+
+localStorage remains the fast working store. The DB is a persistent safety net that enables cross-device access.
+
+```
+User opens Twine editor
+  → Load from localStorage (existing behavior, instant)
+  → Fetch from DB in background (GET /api/auth/twine-stories)
+  → Merge:
+      DB has stories not in localStorage → add to localStorage
+      localStorage has newer lastUpdate  → push to DB
+      DB has newer lastUpdate            → update localStorage
+  → Show sync status on story cards
+
+User edits a passage
+  → Save to localStorage (existing, immediate)
+  → Debounced save to DB (5 seconds after last edit)
+  → Story card shows cloud icon: syncing → saved
+
+User imports .twee/.html from disk
+  → Import to localStorage (existing behavior)
+  → Auto-save to DB (same debounce)
+
+User deletes a story
+  → Remove from localStorage (existing)
+  → Remove from DB (DELETE /api/auth/twine-stories/{storyId})
+```
+
+### Backend API endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/auth/twine-stories` | List all stories for the authenticated user |
+| `GET` | `/api/auth/twine-stories/{storyId}` | Get one story with passages |
+| `PUT` | `/api/auth/twine-stories/{storyId}` | Create or update a story (upsert) |
+| `DELETE` | `/api/auth/twine-stories/{storyId}` | Delete a story |
+
+All endpoints require wallet authentication (same as existing `/api/auth/*` routes). The PUT endpoint accepts the full story + passages JSON and performs an upsert.
+
+### Twine editor integration points
+
+1. **Save middleware extension** — in `src/store/persistence/local-storage/stories/save-middleware.ts`, after each localStorage write, queue a debounced sync call to the backend API.
+
+2. **State loader extension** — in `src/store/state-loader.tsx`, after loading from localStorage, fetch from DB and merge by `lastUpdate` timestamp (newest wins).
+
+3. **Sync status indicator** — add a small cloud icon to each story card on the stories canvas:
+   - ☁️ synced (green) — DB matches localStorage
+   - 🔄 syncing (amber) — debounce pending or request in flight
+   - ⚠️ error (red) — sync failed, retry queued
+
+4. **Delete handler** — extend the `deleteStory` action path to also remove from DB.
+
+5. **Import handler** — after `importStories()` completes, trigger a DB sync for each imported story.
+
+### Debounce and cost considerations
+
+Firestore pricing is per document read/write, not per byte. Auto-saving on every keystroke would be expensive. The 5-second debounce groups rapid edits into a single write. Additional guard: skip the write if the serialized story hasn't changed since the last sync (compare a hash of the JSON payload).
+
+### Conflict resolution
+
+Simple strategy: **newest `lastUpdate` wins**. On merge:
+- If both sides changed, the newer version replaces the older
+- The editor always works on the localStorage copy, so the user never loses in-progress work
+- Future enhancement: per-passage merge using passage IDs (not needed for v1)
+
+### Key files
+
+| Purpose | Path |
+|---|---|
+| Save middleware (hook point) | `src/store/persistence/local-storage/stories/save-middleware.ts` |
+| State loader (load + merge point) | `src/store/state-loader.tsx` |
+| Story types | `src/store/stories/stories.types.ts` |
+| Storage quota UI | `src/components/storage-quota/storage-quota.tsx` |
+| localStorage save/load | `src/store/persistence/local-storage/stories/save.ts` / `load.ts` |
+| Import parser | `src/util/import.ts` |
+| Twee import/export | `src/util/twee.ts` |
+
+---
+
 ## SugarCube Special Passages and StoryData Reference
 
 ### :: StoryData fields (Twee 3 specification)

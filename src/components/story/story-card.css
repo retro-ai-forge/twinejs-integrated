@@ -35,3 +35,41 @@
 	margin-right: var(--grid-size);
 	margin-bottom: var(--grid-size);
 }
+
+.story-card .story-card-footer {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+}
+
+.story-card .cloud-sync-badge {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+}
+
+.story-card .cloud-idle {
+	color: #888;
+	opacity: 0.5;
+}
+
+.story-card .cloud-synced {
+	color: #4caf50;
+}
+
+.story-card .cloud-syncing {
+	color: #ff9800;
+}
+
+.story-card .cloud-syncing svg {
+	animation: spin-sync 1s linear infinite;
+}
+
+.story-card .cloud-error {
+	color: #f44336;
+}
+
+@keyframes spin-sync {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
+}

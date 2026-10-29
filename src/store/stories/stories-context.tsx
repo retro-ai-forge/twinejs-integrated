@@ -1,7 +1,9 @@
 import * as React from 'react';
 import useThunkReducer from 'react-hook-thunk-reducer';
 import {usePersistence} from '../persistence/use-persistence';
+import {useCloudSync} from '../persistence/cloud-sync';
 import {reducer} from './reducer';
+import {storyWithId, storyWithName} from './getters';
 import {
 	StoriesContextProps,
 	StoriesAction,
@@ -19,10 +21,44 @@ StoriesContext.displayName = 'Stories';
 
 export const useStoriesContext = () => React.useContext(StoriesContext);
 
+function getAffectedStory(
+	state: StoriesState,
+	action: StoriesAction
+): {story?: any; deleted?: string} {
+	switch (action.type) {
+		case 'createStory':
+			if (action.props.name) {
+				try {
+					return {story: storyWithName(state, action.props.name)};
+				} catch {
+					return {};
+				}
+			}
+			return {};
+		case 'updateStory':
+		case 'createPassage':
+		case 'createPassages':
+		case 'updatePassage':
+		case 'updatePassages':
+		case 'deletePassage':
+		case 'deletePassages':
+			try {
+				return {story: storyWithId(state, action.storyId)};
+			} catch {
+				return {};
+			}
+		case 'deleteStory':
+			return {deleted: action.storyId};
+		default:
+			return {};
+	}
+}
+
 export const StoriesContextProvider: React.FC = props => {
 	const {stories: storiesPersistence} = usePersistence();
 	const {formats} = useStoryFormatsContext();
 	const {reportError} = useStoreErrorReporter();
+	const {queueSave, queueDelete} = useCloudSync();
 	const persistedReducer: React.Reducer<
 		StoriesState,
 		StoriesAction
@@ -36,9 +72,16 @@ export const StoriesContextProvider: React.FC = props => {
 				reportError(error as Error, 'store.errors.cantPersistStories');
 			}
 
+			const {story, deleted} = getAffectedStory(newState, action);
+			if (story) {
+				queueSave(story);
+			} else if (deleted) {
+				queueDelete(deleted);
+			}
+
 			return newState;
 		},
-		[formats, reportError, storiesPersistence]
+		[formats, reportError, storiesPersistence, queueSave, queueDelete]
 	);
 	const [stories, dispatch] = useThunkReducer(persistedReducer, []);
 
