@@ -9,10 +9,73 @@ Deploy Twine/SugarCube games via FastAPI where all game logic runs on the server
 - All dice rolls, conditionals, and branching happen server-side
 - Client is a thin renderer: receives HTML + choices, sends back a pick
 
-## Architecture
+## Architecture — Runtime Options
+
+There are two ways to run SugarCube server-side. The recommended approach runs inside the existing app container with no extra services. A heavier alternative uses a separate headless-browser container for maximum compatibility.
+
+### Option A — Node.js + jsdom (Recommended)
+
+Run SugarCube in Node.js with jsdom providing the DOM. This is the **primary approach** because:
+
+- **No extra service** — runs inside the existing Docker container (Node.js is already there for Next.js)
+- **~5 MB added** — jsdom is a lightweight npm package, vs ~150-400 MB for Chromium
+- **~2-5 MB per session** — vs ~20-30 MB per headless browser tab
+- **Single deployment** — no container-to-container networking, no second Cloud Run service
+- **Scales to thousands** of concurrent players on minimal hardware
 
 ```
-Server (Docker container)
+Server (existing Docker container)
+┌──────────────────────────────────────────────────────┐
+│  FastAPI (Python)          Node.js sidecar process    │
+│  ┌──────────────┐          ┌────────────────────────┐ │
+│  │ Twee Parser   │          │ jsdom + SugarCube      │ │
+│  │ (Python)      │──HTTP──>│                        │ │
+│  │               │          │ VM A (Player 1)        │ │
+│  │ Parses .twee  │          │  └─ SugarCube instance │ │
+│  │ files, injects│          │ VM B (Player 2)        │ │
+│  │ char stats    │          │  └─ SugarCube instance │ │
+│  │               │          │ VM C (Player 3)        │ │
+│  └──────────────┘          │  └─ SugarCube instance │ │
+│                             └───────────┬────────────┘ │
+│                                         │              │
+│                    scrape rendered HTML + choices       │
+│                                         │              │
+└─────────────────────────────────────────┼──────────────┘
+                                          ▼
+Client (browser)                  { html, choices[] }
+┌──────────────────────────────────────────────────────┐
+│  Thin frontend — renders HTML blob, shows choice     │
+│  buttons, sends player pick back to API              │
+└──────────────────────────────────────────────────────┘
+```
+
+Each player session gets an isolated jsdom instance with SugarCube loaded. The Node.js process exposes a small HTTP API (or Unix socket) that FastAPI calls to start sessions, make choices, and read state. Node.js is already in the Docker image for the Next.js standalone server.
+
+**Tradeoff**: jsdom does not implement every browser API. SugarCube may need minor shims (e.g. `requestAnimationFrame`, `AudioContext`, CSS transitions). These must be tested and shimmed before production. If SugarCube proves too tightly coupled to real browser APIs, fall back to Option B.
+
+#### Memory comparison
+
+| Approach | Base overhead | Per session | 100 players |
+|---|---|---|---|
+| Node.js + jsdom | ~50 MB | ~2-5 MB | ~250-550 MB |
+| Playwright + Chromium | ~80-120 MB | ~20-30 MB | ~2-3 GB |
+
+### Option B — Playwright + Headless Chromium (Alternative)
+
+Run SugarCube in a real headless Chromium browser via Playwright. Use this if jsdom cannot fully support SugarCube, or if future games use advanced browser features (Canvas, WebGL, Web Audio API).
+
+**Two sub-options for deployment:**
+
+**B1 — Combined container** (simpler, fits current single-Dockerfile pattern):
+Add Playwright + Chromium to the existing Dockerfile. All three processes (Next.js, FastAPI, headless Chromium) run in one container. Image grows by ~150-400 MB.
+
+**B2 — Separate service** (cleaner isolation, independent scaling):
+A dedicated Docker container running FastAPI + Playwright + Chromium. The main app proxies adventure requests to it. Two deployments, but a crashed Chromium process cannot take down the main app.
+
+```
+Option B architecture (applies to both B1 and B2):
+
+Server
 ┌───────────────────────────────────────────────────┐
 │  FastAPI                                          │
 │  ┌──────────────┐   ┌──────────────────────────┐  │
@@ -38,6 +101,22 @@ Client (browser)            { html, choices[] }
 │  buttons, sends player pick back to API           │
 └───────────────────────────────────────────────────┘
 ```
+
+If using Option B2 (separate service), use `playwright install chromium --only-shell` for the smallest Chromium binary (~150 MB vs ~400 MB full).
+
+### Decision guide
+
+| Factor | Option A (jsdom) | Option B1 (combined) | Option B2 (separate) |
+|---|---|---|---|
+| Docker image size | +5 MB | +150-400 MB | Separate image |
+| Deployments | 1 | 1 | 2 |
+| Per-session memory | ~2-5 MB | ~20-30 MB | ~20-30 MB |
+| Browser API fidelity | Needs shims/testing | Full | Full |
+| Failure isolation | Shared process | Shared process | Independent |
+| Operational complexity | Low | Low | Medium |
+| Canvas/WebGL/Audio | Not supported | Full support | Full support |
+
+**Start with Option A.** Test SugarCube under jsdom. If it works (likely — the games use text macros, not Canvas), ship it. If not, upgrade to Option B1 in the same container.
 
 ## Source Files
 
@@ -109,58 +188,99 @@ Macros found across the current game files:
 
 **Key insight**: Because the real SugarCube engine runs in the headless browser, zero macro reimplementation is needed. Every macro works natively.
 
-## How Playwright Headless Works
+## How the jsdom Engine Works (Option A)
 
-Playwright runs a real Chromium browser without a visible window. Your Python code controls it programmatically.
+Node.js + jsdom loads the compiled SugarCube game HTML into a virtual DOM. No browser binary needed — jsdom provides `window`, `document`, `localStorage`, and enough browser API surface for SugarCube's text-based macros.
 
 ### Per-turn flow
 
-```python
-from playwright.async_api import async_playwright
+```javascript
+const { JSDOM } = require("jsdom");
+const fs = require("fs");
 
-# 1. Start a hidden browser (once, at server startup)
-browser = await playwright.chromium.launch(headless=True)
+// 1. Load the compiled game HTML (SugarCube engine + story data)
+const gameHtml = fs.readFileSync("/path/to/compiled_game.html", "utf-8");
 
-# 2. Player joins — load game in isolated context
-context = await browser.new_context()
-page = await context.new_page()
-await page.goto("file:///path/to/compiled_game.html")
+// 2. Player joins — create isolated jsdom instance
+const dom = new JSDOM(gameHtml, {
+  runScripts: "dangerously",       // SugarCube JS must execute
+  resources: "usable",             // allow script/style loading
+  pretendToBeVisual: true,         // fake requestAnimationFrame, etc.
+  url: "http://localhost/game",    // origin for localStorage
+});
+const { window } = dom;
 
-# 3. Scrape what SugarCube rendered
-html = await page.inner_html("#passages")
-# → "<div class='title'>Deadly Pit Trap</div><p>The adventurers cautiously...</p>"
+// 3. Wait for SugarCube to boot and render the start passage
+// SugarCube fires :passagerender event when ready
+await new Promise(resolve => {
+  window.document.addEventListener(":passagerender", resolve, { once: true });
+});
 
-# 4. Extract clickable choices
-links = await page.query_selector_all("#passages .btn a")
-choices = []
-for link in links:
-    label = await link.inner_text()
-    choices.append(label)
-# → ["Yes — tread carefully", "No — press forward"]
+// 4. Scrape what SugarCube rendered
+const html = window.document.querySelector("#passages").innerHTML;
+// → "<div class='title'>Deadly Pit Trap</div><p>The adventurers cautiously...</p>"
 
-# 5. Player picks "Yes" via the API → click that link in the headless tab
-await links[0].click()
+// 5. Extract clickable choices
+const links = window.document.querySelectorAll("#passages .btn a");
+const choices = Array.from(links).map(a => a.textContent);
+// → ["Yes — tread carefully", "No — press forward"]
 
-# 6. SugarCube processes the click internally:
-#    - evaluates <<goto "P1yes">>
-#    - loads the P1yes passage
-#    - runs any <<set>>, <<if>>, random() macros
-#    - renders new HTML in the DOM
+// 6. Player picks "Yes" via the API → click that link
+links[0].click();
 
-# 7. Scrape the new rendered state
-await page.wait_for_selector("#passages")
-html = await page.inner_html("#passages")
-# → "<div class='title'>Pit Trap — Avoided!</div>..."
+// 7. SugarCube processes the click internally:
+//    - evaluates <<goto "P1yes">>
+//    - loads the P1yes passage
+//    - runs any <<set>>, <<if>>, random() macros
+//    - renders new HTML in the DOM
+
+// 8. Scrape the new rendered state
+const newHtml = window.document.querySelector("#passages").innerHTML;
+// → "<div class='title'>Pit Trap — Avoided!</div>..."
 ```
 
-The SugarCube engine reacts to the click exactly like a human clicked it. Variables update, dice roll, passages navigate — all server-side.
+SugarCube runs natively in the jsdom JavaScript environment. Variables update, dice roll, passages navigate — all server-side, no browser binary.
+
+### Required shims
+
+jsdom does not implement everything a real browser has. These shims may be needed:
+
+```javascript
+// Apply before loading the game HTML
+function applyShims(window) {
+  // SugarCube checks for CSS transition support
+  if (!window.TransitionEvent) {
+    window.TransitionEvent = class TransitionEvent extends window.Event {};
+  }
+
+  // Audio stubs — capture events instead of playing sound
+  window._audioEvents = [];
+  window.AudioContext = class AudioContext {
+    createGain() { return { connect() {}, gain: { value: 1 } }; }
+    createBufferSource() { return { connect() {}, start() {}, stop() {} }; }
+  };
+
+  // SugarCube's SimpleAudio may check for audio element support
+  window.HTMLAudioElement = window.HTMLAudioElement || class {};
+}
+```
+
+Testing will reveal which shims are actually needed — the games currently use text macros (`<<set>>`, `<<if>>`, `<<goto>>`, `<<link>>`, `random()`), so most browser APIs are not exercised.
 
 ## Player Session Isolation
 
-Each Playwright **context** is a fully isolated browser environment — its own memory, cookies, localStorage, JavaScript globals. SugarCube stores all game state in its own JS runtime per tab.
+Each jsdom instance (Option A) or Playwright context (Option B) is a fully isolated environment — its own memory, localStorage, JavaScript globals. SugarCube stores all game state in its own JS runtime per instance.
 
 ```
-Browser (1 process, shared)
+Option A — Node.js process (shared)
+├── jsdom Instance A (Player 1)  →  $depth=3, $roll=47, at passage "P18"
+│   └── isolated window + document
+├── jsdom Instance B (Player 2)  →  $depth=7, $roll=12, at passage "P101"
+│   └── isolated window + document
+├── jsdom Instance C (Player 3)  →  $depth=1, $roll=88, at passage "P7"
+│   └── isolated window + document
+
+Option B — Browser (1 process, shared)
 ├── Context A (Player 1)  →  $depth=3, $roll=47, at passage "P18"
 │   └── Page (tab)
 ├── Context B (Player 2)  →  $depth=7, $roll=12, at passage "P101"
@@ -174,6 +294,54 @@ Browser (1 process, shared)
 - Identical to three people in separate browsers — except all on your server
 
 ## Session Management
+
+### Option A — jsdom sessions
+
+```javascript
+// Node.js sidecar — Express or Fastify HTTP server
+const sessions = new Map();
+
+async function newGame(playerId, compiledHtml) {
+  const dom = new JSDOM(compiledHtml, {
+    runScripts: "dangerously",
+    resources: "usable",
+    pretendToBeVisual: true,
+    url: `http://localhost/game/${playerId}`,
+  });
+  applyShims(dom.window);
+
+  // Wait for SugarCube to finish rendering the start passage
+  await new Promise(resolve => {
+    dom.window.document.addEventListener(":passagerender", resolve, { once: true });
+  });
+
+  sessions.set(playerId, {
+    dom,
+    window: dom.window,
+    lastActive: Date.now(),
+  });
+}
+
+function playerChoice(playerId, choiceIndex) {
+  const session = sessions.get(playerId);
+  const links = session.window.document.querySelectorAll("#passages a");
+  links[choiceIndex].click();
+  session.lastActive = Date.now();
+
+  const html = session.window.document.querySelector("#passages").innerHTML;
+  const newLinks = session.window.document.querySelectorAll("#passages a");
+  const choices = Array.from(newLinks).map(a => a.textContent);
+  return { html, choices };
+}
+
+function playerDisconnect(playerId) {
+  const session = sessions.get(playerId);
+  session.dom.window.close();  // free memory
+  sessions.delete(playerId);
+}
+```
+
+### Option B — Playwright sessions
 
 ```python
 sessions: dict[str, dict] = {}
@@ -210,6 +378,8 @@ async def player_disconnect(player_id: str):
 
 ## API Endpoints
 
+The API is the same regardless of which runtime option is used. With Option A, FastAPI proxies to the Node.js sidecar. With Option B, FastAPI calls Playwright directly.
+
 ```python
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -229,19 +399,36 @@ async def list_games():
 async def start_game(game_id: str):
     """Start a new game session. Returns session_id + initial passage."""
     session_id = str(uuid4())
-    await new_game(session_id, compiled_games[game_id])
-    page = sessions[session_id]["page"]
-    html = await page.inner_html("#passages")
-    links = await page.query_selector_all("#passages .btn a")
-    choices = [await l.inner_text() for l in links]
-    return {"session_id": session_id, "html": html, "choices": choices}
+    # Option A: POST to Node.js sidecar at http://localhost:3001/sessions/start
+    # Option B: call new_game() with Playwright directly
+    result = await engine.start_session(session_id, compiled_games[game_id])
+    return {"session_id": session_id, **result}
 
 @app.post("/api/sessions/{session_id}/choose")
 async def make_choice(session_id: str, req: ChoiceRequest):
     """Player makes a choice. Returns next passage."""
-    result = await player_choice(session_id, req.choice_index)
+    # Option A: POST to Node.js sidecar
+    # Option B: call player_choice() with Playwright
+    result = await engine.player_choice(session_id, req.choice_index)
     return result
 ```
+
+## Code Examples — Option Translation
+
+The remaining code examples in this document use **Playwright syntax (Option B)** because it was written first. For **Option A (jsdom)**, the translation is mechanical:
+
+| Playwright (Option B) | jsdom (Option A) |
+|---|---|
+| `await page.inner_html("#passages")` | `window.document.querySelector("#passages").innerHTML` |
+| `await page.query_selector_all("#passages a")` | `window.document.querySelectorAll("#passages a")` |
+| `await page.evaluate('() => State.variables.x')` | `window.State.variables.x` (direct access) |
+| `await page.evaluate('Engine.play("P1")')` | `window.Engine.play("P1")` |
+| `await page.wait_for_selector("#passages")` | Listen for SugarCube's `:passagerender` event |
+| `await links[0].click()` | `links[0].click()` (synchronous in jsdom) |
+| `context = await browser.new_context()` | `dom = new JSDOM(html, { runScripts: "dangerously" })` |
+| `await context.close()` | `dom.window.close()` |
+
+The logic (scrape HTML, extract choices, inject variables, detect side story tags) is identical — only the DOM access method changes.
 
 ## What the Player Sees vs. Cannot See
 
@@ -272,6 +459,19 @@ Before forwarding HTML to the player, optionally strip:
 
 ## Memory Requirements
 
+### Option A — jsdom
+
+Node.js base process: ~50 MB. Each jsdom instance (player): ~2-5 MB for a text-based Twine game.
+
+| Container RAM | Concurrent players |
+|---|---|
+| 512 MB | ~80-100 |
+| 1 GB | ~180-200 |
+| 2 GB | ~400+ |
+| 4 GB | ~800+ |
+
+### Option B — Playwright + Chromium
+
 Headless Chromium base process: ~80-120 MB (shared across all tabs).
 Each additional tab (player): ~20-30 MB for a Twine game (no images, no heavy frameworks).
 
@@ -282,14 +482,37 @@ Each additional tab (player): ~20-30 MB for a Twine game (no images, no heavy fr
 | 2 GB | ~60-80 |
 | 4 GB | ~150+ |
 
-### Scaling strategies
+### Scaling strategies (both options)
 
-- **Timeout idle sessions** — close tabs for players inactive for N minutes
-- **Cap concurrent tabs** — reject or queue new players at the limit
+- **Timeout idle sessions** — close instances/tabs for players inactive for N minutes
+- **Cap concurrent sessions** — reject or queue new players at the limit
 - **Horizontal scaling** — add more containers, not bigger ones
-- A $5/month VPS (1 GB) handles ~30 concurrent players comfortably
+- Option A: a $5/month VPS (1 GB) handles ~200 concurrent players
+- Option B: a $5/month VPS (1 GB) handles ~30 concurrent players
 
 ## Project Structure
+
+### Option A — jsdom (integrated into main app)
+
+```
+TheWudlands-App/
+├── backend/
+│   ├── main.py              # FastAPI app — proxies adventure requests to Node sidecar
+│   ├── compiler.py          # Twee parser → compiled HTML via format.js template
+│   └── games/
+│       ├── deadly-dungeon.twee
+│       └── space-exploration.twee
+├── twine-engine/
+│   ├── server.js            # Node.js sidecar — Express/Fastify, jsdom sessions
+│   ├── shims.js             # Browser API shims for jsdom
+│   └── package.json         # jsdom dependency
+├── twinejs-integrated/
+│   └── public/story-formats/sugarcube-2.37.3/format.js
+├── Dockerfile               # Existing — no changes needed (Node.js already included)
+└── docker-compose.yml       # Existing — no changes needed
+```
+
+### Option B — Playwright (separate service)
 
 ```
 twine-server/
@@ -304,18 +527,38 @@ twine-server/
 ├── static/
 │   ├── index.html           # Game selection page
 │   └── player.html          # Thin game renderer (receives HTML + choices via API)
-├── Dockerfile
+├── Dockerfile.twine         # Separate — Python + Playwright + Chromium
 ├── docker-compose.yml
 └── requirements.txt         # fastapi, uvicorn, playwright
 ```
 
 ## Docker Setup
 
+### Option A — jsdom (no changes to existing Dockerfile)
+
+jsdom runs in Node.js, which is already in the Docker image for the Next.js standalone server. The only addition is a small Node.js sidecar script and the jsdom npm package (~5 MB).
+
+```dockerfile
+# In the existing Dockerfile's frontend-builder stage, jsdom is added
+# to the Next.js package.json dependencies. No new stage needed.
+# The Node.js sidecar script ships alongside the Next.js server.
+
+# Entrypoint starts three processes:
+# 1. node server.js          (Next.js frontend)
+# 2. node twine-engine.js    (jsdom SugarCube sessions)
+# 3. uvicorn backend.main    (FastAPI backend)
+```
+
+No extra Docker image. No extra deployment. Same container, same `docker-compose.yml`.
+
+### Option B — Playwright + Chromium (separate Dockerfile)
+
 ```dockerfile
 FROM python:3.12-slim
 
 RUN pip install fastapi uvicorn playwright
-RUN playwright install chromium --with-deps
+# Use --only-shell for smallest Chromium binary (~150 MB vs ~400 MB)
+RUN playwright install chromium --only-shell --with-deps
 
 COPY . /app
 WORKDIR /app
@@ -324,25 +567,33 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 ```yaml
-# docker-compose.yml
+# docker-compose.yml — adds a second service
 services:
-  twine-server:
-    build: .
+  wudlands:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
+      - "3000:3000"
       - "8000:8000"
+
+  twine-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.twine
+    ports:
+      - "8001:8000"
     mem_limit: 1g
     restart: unless-stopped
 ```
 
-## Alternative: Python Macro Interpreter
+## Option C — Python Macro Interpreter (Future)
 
-If Playwright's memory overhead is too much, the current game files use a small enough macro subset to reimplement in Python (~300-500 lines):
+If neither jsdom nor Playwright are suitable, the current game files use a small enough macro subset to reimplement in Python (~300-500 lines):
 
 - `<<set>>`, `<<if>>`/`<<elseif>>`/`<<else>>`, `<<goto>>`, `<<link>>`, `<<widget>>`, `<<include>>`, `<<for>>`, `<<nobr>>`/`<<silently>>`, `random()`
 
-This would use <1 MB per session and scale to thousands of players on minimal hardware. The tradeoff: implementation effort up front, and any new SugarCube features in future games would need to be added to the interpreter.
-
-The Playwright approach is recommended for getting started — zero macro reimplementation, full SugarCube compatibility, and the memory cost is acceptable for moderate player counts.
+This would use <1 MB per session and scale to thousands of players on minimal hardware. The tradeoff: implementation effort up front, and any new SugarCube features in future games would need to be added to the interpreter. Not recommended unless Options A and B both prove impractical.
 
 ## Character Stats Injection from TheWudlands
 
