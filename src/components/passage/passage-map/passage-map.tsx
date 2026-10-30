@@ -69,6 +69,7 @@ function dragReducer(state: DragState, action: DragAction) {
 }
 
 const compactCardZoom = 0.6;
+const structureCardZoom = 0.3;
 
 export const PassageMap: React.FC<PassageMapProps> = props => {
 	const {
@@ -87,6 +88,9 @@ export const PassageMap: React.FC<PassageMapProps> = props => {
 	} = props;
 	const [compactCards, setCompactCards] = React.useState(
 		visibleZoom <= compactCardZoom
+	);
+	const [structureCards, setStructureCards] = React.useState(
+		visibleZoom <= structureCardZoom
 	);
 	const container = React.useRef<HTMLDivElement>(null);
 	const passageBounds = React.useMemo(() => {
@@ -139,6 +143,7 @@ export const PassageMap: React.FC<PassageMapProps> = props => {
 	React.useEffect(() => {
 		if (zoom === visibleZoom) {
 			setCompactCards(zoom <= compactCardZoom);
+			setStructureCards(zoom <= structureCardZoom);
 		}
 	}, [visibleZoom, zoom]);
 
@@ -199,7 +204,8 @@ export const PassageMap: React.FC<PassageMapProps> = props => {
 	return (
 		<div
 			className={classnames('passage-map', {
-				'compact-passage-cards': compactCards
+				'compact-passage-cards': compactCards,
+				'structure-passage-cards': structureCards
 			})}
 			ref={container}
 			style={style}

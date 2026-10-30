@@ -51,6 +51,10 @@ export interface PrefsState {
 	 */
 	editorCursorBlinks: boolean;
 	/**
+	 * Whether "Test from here" launches with the story format's debug mode on.
+	 */
+	testDebug: boolean;
+	/**
 	 * Timestamp when the app was first run.
 	 */
 	firstRunTime: number;

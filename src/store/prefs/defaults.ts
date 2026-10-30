@@ -31,6 +31,7 @@ export const defaults = (): PrefsState => ({
 	storyListSort: 'name',
 	storyListTagFilter: [],
 	storyTagColors: {},
+	testDebug: true,
 	canvasBackgroundColor: '',
 	canvasGridColor: '',
 	canvasArrowColor: '',

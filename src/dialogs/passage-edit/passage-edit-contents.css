@@ -6,17 +6,12 @@
 
 .passage-edit-image-preview {
 	flex-shrink: 0;
-	max-height: 50vh;
-	overflow: hidden;
-	text-align: center;
-	background: var(--dark-gray, #333);
 }
 
 .passage-edit-image-preview img {
 	display: block;
 	width: 100%;
-	max-height: 50vh;
-	object-fit: contain;
+	height: auto;
 }
 
 /* Needed when CodeMirror is disabled. */

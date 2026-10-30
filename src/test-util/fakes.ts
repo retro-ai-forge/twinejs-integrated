@@ -121,6 +121,7 @@ export function fakePrefs(overrides?: Partial<PrefsState>): PrefsState {
 		],
 		donateShown: faker.datatype.boolean(),
 		editorCursorBlinks: faker.datatype.boolean(),
+		testDebug: faker.datatype.boolean(),
 		firstRunTime: new Date().getTime(),
 		lastUpdateSeen: '',
 		lastUpdateCheckTime: new Date().getTime(),

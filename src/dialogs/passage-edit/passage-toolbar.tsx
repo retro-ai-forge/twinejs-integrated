@@ -5,11 +5,13 @@ import {useTranslation} from 'react-i18next';
 import {UndoRedoButtons} from '../../components/codemirror';
 import {ButtonBar} from '../../components/container/button-bar';
 import {IconButton} from '../../components/control/icon-button';
+import {CheckboxButton} from '../../components/control/checkbox-button';
 import {MenuButton} from '../../components/control/menu-button';
 import {RenamePassageButton} from '../../components/passage/rename-passage-button';
 import {TestPassageButton} from '../../routes/story-edit/toolbar/passage/test-passage-button';
 import {useDialogsContext} from '../context/dialogs-context';
 import {ImageManagerDialog} from '../image-manager';
+import {setPref, usePrefsContext} from '../../store/prefs';
 import {
 	addPassageTag,
 	Passage,
@@ -35,6 +37,7 @@ export const PassageToolbar: React.FC<PassageToolbarProps> = props => {
 	const {disabled, editor, passage, story, useCodeMirror} = props;
 	const {dispatch} = useUndoableStoriesContext();
 	const {dispatch: dialogsDispatch} = useDialogsContext();
+	const {dispatch: prefsDispatch, prefs} = usePrefsContext();
 	const {t} = useTranslation();
 	const passageTags = storyPassageTags(story);
 
@@ -131,6 +134,11 @@ export const PassageToolbar: React.FC<PassageToolbarProps> = props => {
 				story={story}
 			/>
 			<TestPassageButton passage={passage} story={story} />
+			<CheckboxButton
+				label="Debug"
+				onChange={value => prefsDispatch(setPref('testDebug', value))}
+				value={prefs.testDebug}
+			/>
 		</ButtonBar>
 	);
 };

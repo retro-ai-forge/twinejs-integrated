@@ -2,6 +2,7 @@ import * as React from 'react';
 import {useParams} from 'react-router-dom';
 import {replaceDom} from '../../util/replace-dom';
 import {usePublishing} from '../../store/use-publishing';
+import {usePrefsContext} from '../../store/prefs';
 import {ErrorMessage} from '../../components/error';
 
 export const StoryTestRoute: React.FC = () => {
@@ -12,13 +13,14 @@ export const StoryTestRoute: React.FC = () => {
 		storyId: string;
 	}>();
 	const {publishStory} = usePublishing();
+	const {prefs} = usePrefsContext();
 
 	React.useEffect(() => {
 		async function load() {
 			try {
 				replaceDom(
 					await publishStory(storyId, {
-						formatOptions: 'debug',
+						formatOptions: prefs.testDebug ? 'debug' : '',
 						startId: passageId
 					})
 				);
