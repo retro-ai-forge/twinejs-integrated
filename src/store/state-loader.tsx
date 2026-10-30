@@ -6,6 +6,7 @@ import {usePrefsContext} from './prefs';
 import {useStoriesContext} from './stories';
 import {useStoryFormatsContext} from './story-formats';
 import {useStoriesRepair} from './use-stories-repair';
+import {loadOwnerWallet} from '../util/twine-images';
 
 export const StateLoader: React.FC = ({children}) => {
 	const [initing, setIniting] = React.useState(false);
@@ -35,6 +36,10 @@ export const StateLoader: React.FC = ({children}) => {
 				const formatsState = await storyFormats.load();
 				const prefsState = await prefs.load();
 				const storiesState = await stories.load();
+
+				// Cache the wallet before rendering so canvas thumbnails and the
+				// passage preview can build their (wallet-scoped) image URLs.
+				await loadOwnerWallet();
 
 				formatsDispatch({type: 'init', state: formatsState});
 				prefsDispatch({type: 'init', state: prefsState});

@@ -11,15 +11,51 @@
 
 const IMAGE_BUCKET = 'thewudlands.firebasestorage.app';
 
-/** Public URL for a story image (or its thumbnail). Requires public-read bucket. */
+// The editor only ever deals with the author's own working images, stored under
+// the "create" stage keyed by their wallet: twine-images/{wallet}/create/{id}/.
+// (review/served copies are made server-side on submit/deploy.)
+const STAGE_CREATE = 'create';
+
+// The owner's wallet, cached once from /api/auth/me. Read URLs need it because
+// the bucket path is wallet-scoped; uploads/deletes don't (the backend derives
+// the wallet from the session), so this only gates what the canvas can display.
+let ownerWallet = '';
+let walletPromise: Promise<string> | null = null;
+
+export function getOwnerWallet(): string {
+	return ownerWallet;
+}
+
+export function setOwnerWallet(wallet: string): void {
+	ownerWallet = wallet || '';
+}
+
+/** Fetches and caches the authenticated wallet once. Empty string if signed out. */
+export function loadOwnerWallet(): Promise<string> {
+	if (!walletPromise) {
+		walletPromise = fetch('/api/auth/me', {credentials: 'include'})
+			.then(res => (res.ok ? res.json() : null))
+			.then(data => {
+				ownerWallet = (data && data.address) || '';
+				return ownerWallet;
+			})
+			.catch(() => {
+				ownerWallet = '';
+				return '';
+			});
+	}
+
+	return walletPromise;
+}
+
+/** Public URL for a create-stage story image (or its thumbnail). */
 export function imagePublicUrl(
 	storyId: string,
 	filename: string,
 	thumb = false
 ): string {
-	const path = thumb
-		? `twine-images/${storyId}/thumbs/${filename}`
-		: `twine-images/${storyId}/${filename}`;
+	const dir = `twine-images/${ownerWallet}/${STAGE_CREATE}/${storyId}`;
+	const path = thumb ? `${dir}/thumbs/${filename}` : `${dir}/${filename}`;
 
 	return `https://storage.googleapis.com/${IMAGE_BUCKET}/${encodeURI(path)}`;
 }

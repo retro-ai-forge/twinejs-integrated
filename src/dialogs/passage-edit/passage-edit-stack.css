@@ -1,6 +1,15 @@
 .passage-edit-stack {
 	flex-grow: 1;
 	width: 100%;
+	/* Narrow, mobile-like editing column so a 600px image preview fills the
+	   width and authors get a feel for the phone screen the game runs on. */
+	max-width: 400px;
+	margin-left: auto;
+}
+
+/* When maximized the editor should still use the full available height/width. */
+.maximized .passage-edit-stack {
+	max-width: none;
 }
 
 .maximized .passage-edit-stack {
