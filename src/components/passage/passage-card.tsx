@@ -8,6 +8,7 @@ import {SelectableCard} from '../container/card/selectable-card';
 import {Passage, TagColors} from '../../store/stories';
 import {TagStripe} from '../tag/tag-stripe';
 import {passageIsEmpty} from '../../util/passage-is-empty';
+import {firstImageName, imagePublicUrl} from '../../util/twine-images';
 import './passage-card.css';
 import { TagBadges } from '../tag/tag-badges';
 
@@ -102,6 +103,10 @@ export const PassageCard: React.FC<PassageCardProps> = React.memo(props => {
 		},
 		[onSelect, passage]
 	);
+	const thumbName = React.useMemo(
+		() => firstImageName(passage.text),
+		[passage.text]
+	);
 
 	return (
 		<DraggableCore
@@ -120,6 +125,17 @@ export const PassageCard: React.FC<PassageCardProps> = React.memo(props => {
 					selected={passage.selected}
 				>
 					{tagDisplay === 'color' && <TagStripe tagColors={tagColors} tags={passage.tags} />}
+					{thumbName && (
+						<img
+							alt=""
+							className="passage-card-thumb"
+							draggable={false}
+							src={imagePublicUrl(passage.story, thumbName, true)}
+							onError={event => {
+								(event.target as HTMLImageElement).style.display = 'none';
+							}}
+						/>
+					)}
 					<h2>{passage.name}</h2>
 					<CardContent>{excerpt}</CardContent>
 					{tagDisplay === 'name' && <TagBadges tagColors={tagColors} tags={passage.tags} />}

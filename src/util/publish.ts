@@ -2,6 +2,7 @@ import escape from 'lodash/escape';
 import {Passage, Story} from '../store/stories';
 import {AppInfo} from './app-info';
 import {i18n} from './i18n';
+import {rewriteImgMacros} from './twine-images';
 
 export interface PublishOptions {
 	/**
@@ -51,13 +52,17 @@ export function publishArchive(stories: Story[], appInfo: AppInfo) {
  * passages are numbered sequentially in published stories, not with a UUID.
  */
 export function publishPassage(passage: Passage, localId: number) {
+	// Rewrite bare image filenames (`[img[file.jpg]]`) to full public bucket URLs
+	// before escaping, so played stories load images without a path prefix in text.
+	const text = rewriteImgMacros(passage.text, passage.story);
+
 	return (
 		`<tw-passagedata pid="${escape(localId.toString())}" ` +
 		`name="${escape(passage.name)}" ` +
 		`tags="${escape(passage.tags.join(' '))}" ` +
 		`position="${passage.left},${passage.top}" ` +
 		`size="${passage.width},${passage.height}">` +
-		`${escape(passage.text)}</tw-passagedata>`
+		`${escape(text)}</tw-passagedata>`
 	);
 }
 

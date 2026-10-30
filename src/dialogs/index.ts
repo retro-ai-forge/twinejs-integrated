@@ -5,6 +5,7 @@ export * from './color-prefs-dialog';
 export * from './context';
 export * from './context/dialogs';
 export * from './dialogs.types';
+export * from './image-manager';
 export * from './passage-edit';
 export * from './passage-tags';
 export * from './story-import';

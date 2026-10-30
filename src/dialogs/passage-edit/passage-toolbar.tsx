@@ -1,12 +1,15 @@
-import {IconResize} from '@tabler/icons';
+import {IconPhoto, IconResize} from '@tabler/icons';
 import {Editor} from 'codemirror';
 import * as React from 'react';
 import {useTranslation} from 'react-i18next';
 import {UndoRedoButtons} from '../../components/codemirror';
 import {ButtonBar} from '../../components/container/button-bar';
+import {IconButton} from '../../components/control/icon-button';
 import {MenuButton} from '../../components/control/menu-button';
 import {RenamePassageButton} from '../../components/passage/rename-passage-button';
 import {TestPassageButton} from '../../routes/story-edit/toolbar/passage/test-passage-button';
+import {useDialogsContext} from '../context/dialogs-context';
+import {ImageManagerDialog} from '../image-manager';
 import {
 	addPassageTag,
 	Passage,
@@ -31,6 +34,7 @@ export interface PassageToolbarProps {
 export const PassageToolbar: React.FC<PassageToolbarProps> = props => {
 	const {disabled, editor, passage, story, useCodeMirror} = props;
 	const {dispatch} = useUndoableStoriesContext();
+	const {dispatch: dialogsDispatch} = useDialogsContext();
 	const {t} = useTranslation();
 	const passageTags = storyPassageTags(story);
 
@@ -107,6 +111,18 @@ export const PassageToolbar: React.FC<PassageToolbarProps> = props => {
 					}
 				]}
 				label={t('dialogs.passageEdit.size')}
+			/>
+			<IconButton
+				disabled={disabled}
+				icon={<IconPhoto />}
+				label="Images"
+				onClick={() =>
+					dialogsDispatch({
+						type: 'addDialog',
+						component: ImageManagerDialog,
+						props: {storyId: story.id}
+					})
+				}
 			/>
 			<RenamePassageButton
 				disabled={disabled}

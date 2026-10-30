@@ -1,0 +1,63 @@
+.image-manager-toolbar {
+	margin-bottom: var(--grid-size);
+}
+
+.image-manager-hint {
+	color: var(--gray);
+	font-size: 90%;
+}
+
+.image-manager-hint code {
+	font-family: var(--font-monospaced);
+}
+
+.image-manager-error {
+	color: var(--red, #c00);
+}
+
+.image-manager-empty {
+	color: var(--gray);
+	font-style: italic;
+}
+
+.image-manager-list {
+	display: flex;
+	flex-direction: column;
+	gap: calc(var(--grid-size) / 2);
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.image-manager-list li {
+	align-items: center;
+	display: flex;
+	gap: var(--grid-size);
+	padding: calc(var(--grid-size) / 2);
+	border-bottom: 1px solid var(--very-light-gray, #ddd);
+}
+
+.image-manager-list img {
+	width: 48px;
+	height: 48px;
+	object-fit: cover;
+	border-radius: 2px;
+	image-rendering: pixelated;
+	background: var(--very-light-gray, #eee);
+}
+
+.image-manager-name {
+	flex-grow: 1;
+	text-align: left;
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-family: var(--font-monospaced);
+	font-size: 100%;
+	color: var(--blue);
+	padding: 0;
+}
+
+.image-manager-name:hover {
+	text-decoration: underline;
+}

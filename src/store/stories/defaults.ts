@@ -2,7 +2,7 @@ import {i18n} from '../../util/i18n';
 import {Passage, Story} from './stories.types';
 
 export const passageDefaults = (): Omit<Passage, 'id' | 'story'> => ({
-	height: 100,
+	height: 200,
 	highlighted: false,
 	left: 0,
 	name: i18n.t('store.passageDefaults.name'),

@@ -13,6 +13,7 @@ import {PassageToolbar} from './passage-toolbar';
 import {StoryFormatToolbar} from './story-format-toolbar';
 import './passage-edit-contents.css';
 import {usePrefsContext} from '../../store/prefs';
+import {firstImageName, imagePublicUrl} from '../../util/twine-images';
 
 export interface PassageEditContentsProps {
 	disabled?: boolean;
@@ -89,6 +90,8 @@ export const PassageEditContents: React.FC<
 		);
 	}
 
+	const imageName = firstImageName(passage.text);
+
 	return (
 		<div className="passage-edit-contents" aria-hidden={disabled}>
 			<PassageToolbar
@@ -105,6 +108,17 @@ export const PassageEditContents: React.FC<
 					onExecCommand={handleExecCommand}
 					storyFormat={storyFormat}
 				/>
+			)}
+			{imageName && (
+				<div className="passage-edit-image-preview">
+					<img
+						alt={imageName}
+						src={imagePublicUrl(story.id, imageName)}
+						onError={event => {
+							(event.target as HTMLImageElement).style.display = 'none';
+						}}
+					/>
+				</div>
 			)}
 			<ErrorBoundary>
 				<PassageText
