@@ -237,7 +237,7 @@ export const ImageManagerDialog: React.FC<ImageManagerDialogProps> = props => {
 
 	async function handleCopy(filename: string) {
 		try {
-			await navigator.clipboard.writeText(filename);
+			await navigator.clipboard.writeText(`[img[${filename}]]`);
 			setCopied(filename);
 			window.setTimeout(() => setCopied(undefined), 1500);
 		} catch {
@@ -271,8 +271,8 @@ export const ImageManagerDialog: React.FC<ImageManagerDialogProps> = props => {
 			</div>
 			{error && <p className="image-manager-error">{error}</p>}
 			<p className="image-manager-hint">
-				Click a filename to copy it, then paste into a passage as
-				<code> [img[filename]]</code>.
+				Click a filename to copy it as
+				<code> [img[filename]]</code>, ready to paste into a passage
 			</p>
 			{loading ? (
 				<p>Loading…</p>

@@ -125,8 +125,8 @@ export function serializeHotspot(h: Hotspot): string {
 /**
  * Replace the hotspots in passage text with the given set, leaving the rest of
  * the text (narrative, image macro, other links) untouched. The `<<area>>`
- * block is written on its own lines directly after the first `[img[...]]`
- * macro, or at the top if the passage has no image.
+ * block is written on its own lines at the END of the passage, separated from
+ * the body by a blank line.
  */
 export function writeHotspots(text: string, hotspots: Hotspot[]): string {
 	// Strip existing area macros and tidy the blank lines they leave behind.
@@ -140,14 +140,8 @@ export function writeHotspots(text: string, hotspots: Hotspot[]): string {
 	}
 
 	const block = hotspots.map(serializeHotspot).join('\n');
-	const lines = stripped.split('\n');
-	const imageLine = lines.findIndex(line => /\[img\[/.test(line));
+	const body = stripped.trimEnd();
 
-	if (imageLine === -1) {
-		return `${block}\n${stripped.replace(/^\n+/, '')}`;
-	}
-
-	lines.splice(imageLine + 1, 0, block);
-
-	return lines.join('\n').replace(/\n{3,}/g, '\n\n');
+	// Append the <<area>> block at the end, after a blank line if there's body.
+	return body.length ? `${body}\n\n${block}\n` : `${block}\n`;
 }
