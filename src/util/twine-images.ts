@@ -9,12 +9,17 @@
 // `[img[desert_dune.jpg]]`. At publish time the filename is rewritten to the
 // full public URL (see rewriteImgMacros), so the stored text stays clean.
 
+import {reviewCopyOf} from './review-copies';
+
 const IMAGE_BUCKET = 'thewudlands.firebasestorage.app';
 
-// The editor only ever deals with the author's own working images, stored under
-// the "create" stage keyed by their wallet: twine-images/{wallet}/create/{id}/.
-// (review/served copies are made server-side on submit/deploy.)
+// The editor deals with the author's own working images, stored under the
+// "create" stage keyed by their wallet: twine-images/{wallet}/create/{id}/.
+// (review/served copies are made server-side on submit/deploy.) The one
+// exception is a reviewer's copy of a submission (review-copies.ts), which
+// shows the author's frozen images: twine-images/{owner}/review/{storyId}/.
 const STAGE_CREATE = 'create';
+const STAGE_REVIEW = 'review';
 
 // The owner's wallet, cached once from /api/auth/me. Read URLs need it because
 // the bucket path is wallet-scoped; uploads/deletes don't (the backend derives
@@ -48,13 +53,19 @@ export function loadOwnerWallet(): Promise<string> {
 	return walletPromise;
 }
 
-/** Public URL for a create-stage story image (or its thumbnail). */
+/**
+ * Public URL for a story image (or its thumbnail): the create stage of the
+ * signed-in author, or for a review copy the owner's review stage.
+ */
 export function imagePublicUrl(
 	storyId: string,
 	filename: string,
 	thumb = false
 ): string {
-	const dir = `twine-images/${ownerWallet}/${STAGE_CREATE}/${storyId}`;
+	const review = reviewCopyOf(storyId);
+	const dir = review
+		? `twine-images/${review.owner}/${STAGE_REVIEW}/${review.storyId}`
+		: `twine-images/${ownerWallet}/${STAGE_CREATE}/${storyId}`;
 	const path = thumb ? `${dir}/thumbs/${filename}` : `${dir}/${filename}`;
 
 	return `https://storage.googleapis.com/${IMAGE_BUCKET}/${encodeURI(path)}`;

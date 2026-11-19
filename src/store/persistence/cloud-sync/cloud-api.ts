@@ -132,3 +132,34 @@ export async function cloudDeleteStory(
 ): Promise<{ok: boolean} | null> {
 	return apiFetch(`/${encodeURIComponent(storyId)}`, {method: 'DELETE'});
 }
+
+export type ReviewStoryResult =
+	| {ok: true; story: CloudStoryFull}
+	| {ok: false; status: number};
+
+/**
+ * A submission's frozen review copy, for a reviewer to open in the editor
+ * (reviewer or admin only). `status` is the HTTP status on failure, 0 when the
+ * request itself failed.
+ */
+export async function reviewGetStory(
+	owner: string,
+	storyId: string
+): Promise<ReviewStoryResult> {
+	try {
+		const res = await fetch(
+			`/api/auth/twine-reviews/${encodeURIComponent(
+				owner
+			)}/${encodeURIComponent(storyId)}/story`,
+			{credentials: 'include'}
+		);
+
+		if (!res.ok) {
+			return {ok: false, status: res.status};
+		}
+
+		return {ok: true, story: await res.json()};
+	} catch {
+		return {ok: false, status: 0};
+	}
+}

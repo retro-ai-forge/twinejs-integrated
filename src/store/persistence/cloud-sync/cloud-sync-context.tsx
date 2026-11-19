@@ -7,6 +7,7 @@ import {
 	cloudSaveStory,
 	cloudStoryToLocal
 } from './cloud-api';
+import {forgetReviewCopy, reviewCopyOf} from '../../../util/review-copies';
 
 export type SyncStatus = 'idle' | 'synced' | 'syncing' | 'error';
 
@@ -76,6 +77,10 @@ export const CloudSyncProvider: React.FC = ({children}) => {
 
 	const queueSave = React.useCallback(
 		(story: Story) => {
+			// A reviewer's copy of a submission stays in this browser.
+			if (reviewCopyOf(story.id)) {
+				return;
+			}
 			if (timersRef.current[story.id]) {
 				clearTimeout(timersRef.current[story.id]);
 			}
@@ -90,6 +95,11 @@ export const CloudSyncProvider: React.FC = ({children}) => {
 
 	const queueDelete = React.useCallback(
 		(storyId: string) => {
+			// A review copy was never in the cloud: just forget it.
+			if (reviewCopyOf(storyId)) {
+				forgetReviewCopy(storyId);
+				return;
+			}
 			if (timersRef.current[storyId]) {
 				clearTimeout(timersRef.current[storyId]);
 				delete timersRef.current[storyId];

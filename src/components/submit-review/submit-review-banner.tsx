@@ -2,6 +2,7 @@ import * as React from 'react';
 import {IconSend, IconCheck, IconX, IconAlertTriangle} from '@tabler/icons';
 import {Story} from '../../store/stories';
 import {cloudSaveStory} from '../../store/persistence/cloud-sync/cloud-api';
+import {reviewCopyOf} from '../../util/review-copies';
 import './submit-review-banner.css';
 
 export interface SubmitReviewBannerProps {
@@ -53,9 +54,34 @@ function countStoryImages(story: Story): number {
 	return seen.size;
 }
 
-export const SubmitReviewBanner: React.FC<SubmitReviewBannerProps> = ({
-	story
-}) => {
+function shortWallet(wallet: string): string {
+	return wallet.length > 14 ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : wallet;
+}
+
+/**
+ * The submit bar, or for a reviewer's copy of a submission (opened through
+ * /review/...) a note that it's only for testing: it is never synced or
+ * submitted.
+ */
+export const SubmitReviewBanner: React.FC<SubmitReviewBannerProps> = props => {
+	const review = reviewCopyOf(props.story.id);
+
+	if (review) {
+		return (
+			<div className="submit-review-banner submit-review-warn">
+				<IconAlertTriangle size={16} />
+				<span>
+					Review copy of a submission by {shortWallet(review.owner)}. Test
+					only, no changes will be saved or submitted.
+				</span>
+			</div>
+		);
+	}
+
+	return <SubmitBanner {...props} />;
+};
+
+const SubmitBanner: React.FC<SubmitReviewBannerProps> = ({story}) => {
 	const [state, setState] = React.useState<SubmitState>('idle');
 	const [result, setResult] = React.useState<SubmitResult>({});
 	const [freezing, setFreezing] = React.useState(false);
