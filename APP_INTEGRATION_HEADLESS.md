@@ -33,7 +33,7 @@ Updated 2026-11-19. What a story may contain is defined in `docs/STORY-RULES.md`
 ## Decisions
 
 - **Engine:** the real SugarCube engine in Node.js with jsdom. A headless browser was dropped for its memory use. A Python reimplementation of the commands was dropped because authors test with SugarCube, so the server has to run SugarCube too.
-- **Shared engine processes:** all stories share a small pool of worker processes, to save memory. The risk this leaves is described under "Security".
+- **Shared engine processes:** all stories share a small pool of worker processes, to save memory. The risk this leaves is described under "Security". **Changed 2026-11-20:** live and unreviewed stories run in two separate engine services (`engine-live` with shared workers, `engine-test` with single-use workers), and reviewers test-play on `engine-test` instead of in the editor. See `ARCHITECTURE.md` in the main app repository.
 - **No external loading:** the engine never fetches anything (scripts, stylesheets, images or network requests), story CSS can't load anything from an address, and images come only from the story's own image list.
 - **Only reviewed commands:** a story may only use the forms in the story rules, written as shown there, with no nesting inside tags (see "Allowed commands").
 - **Characters are data:** the server puts `$char` and `$lead` into the engine before every scene. `StoryInit` never holds character data.
