@@ -17,7 +17,9 @@ describe('replaceDom', () => {
 
 		expect(frames).toHaveLength(1);
 		expect(frames[0].getAttribute('srcdoc')).toBe(withMemoryStorage(story));
-		expect(document.body.textContent).not.toContain('This should be overwritten');
+		expect(document.body.textContent).not.toContain(
+			'This should be overwritten'
+		);
 	});
 
 	it('seals the frame: scripts run, but never with the page’s origin', () => {
@@ -48,12 +50,16 @@ describe('withMemoryStorage', () => {
 		);
 
 		expect(page.indexOf(MEMORY_STORAGE_SHIM)).toBeGreaterThan(-1);
-		expect(page.indexOf(MEMORY_STORAGE_SHIM)).toBeLessThan(page.indexOf('sugarcube()'));
+		expect(page.indexOf(MEMORY_STORAGE_SHIM)).toBeLessThan(
+			page.indexOf('sugarcube()')
+		);
 		expect(page.startsWith('<html><head lang="en">')).toBe(true);
 	});
 
 	it('still installs it in a page without a head', () => {
-		expect(withMemoryStorage('<p>x</p>')).toBe(MEMORY_STORAGE_SHIM + '<p>x</p>');
+		expect(withMemoryStorage('<p>x</p>')).toBe(
+			MEMORY_STORAGE_SHIM + '<p>x</p>'
+		);
 	});
 
 	it('gives a working store where the frame has none', () => {
@@ -65,7 +71,9 @@ describe('withMemoryStorage', () => {
 				throw new Error('SecurityError');
 			}
 		});
-		new Function('window', MEMORY_STORAGE_SHIM.replace(/<\/?script>/g, ''))(sealed);
+		new Function('window', MEMORY_STORAGE_SHIM.replace(/<\/?script>/g, ''))(
+			sealed
+		);
 		sealed.localStorage.setItem('a', 1);
 		expect(sealed.localStorage.getItem('a')).toBe('1');
 		expect(sealed.localStorage.length).toBe(1);

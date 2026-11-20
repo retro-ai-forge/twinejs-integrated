@@ -163,3 +163,53 @@ export async function reviewGetStory(
 		return {ok: false, status: 0};
 	}
 }
+
+export interface ReviewSaveResult {
+	/** True when the edit was saved; false when the checks refused it. */
+	ok: boolean;
+	/** The HTTP status; 0 when the request itself failed. */
+	status: number;
+	errors?: string[];
+	warnings?: string[];
+	/** The server's reason when the request was refused (403, 404, 409...). */
+	detail?: string;
+}
+
+/**
+ * Saves a reviewer's edits of a review copy back to the submission (reviewer
+ * or admin only, after the story's 7 days). The server runs the submit checks
+ * and keeps the submission the author's: its id, name and IFID.
+ */
+export async function reviewSaveStory(
+	owner: string,
+	storyId: string,
+	story: Story
+): Promise<ReviewSaveResult> {
+	try {
+		const res = await fetch(
+			`/api/auth/twine-reviews/${encodeURIComponent(
+				owner
+			)}/${encodeURIComponent(storyId)}`,
+			{
+				method: 'PUT',
+				credentials: 'include',
+				headers: {'Content-Type': 'application/json'},
+				body: JSON.stringify(storyToPayload(story))
+			}
+		);
+		const data = await res.json().catch(() => ({}));
+
+		if (!res.ok) {
+			return {ok: false, status: res.status, detail: data.detail};
+		}
+
+		return {
+			ok: data.ok === true,
+			status: res.status,
+			errors: data.errors,
+			warnings: data.warnings
+		};
+	} catch {
+		return {ok: false, status: 0};
+	}
+}

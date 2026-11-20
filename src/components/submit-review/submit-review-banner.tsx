@@ -1,7 +1,11 @@
 import * as React from 'react';
 import {IconSend, IconCheck, IconX, IconAlertTriangle} from '@tabler/icons';
 import {Story} from '../../store/stories';
-import {cloudSaveStory} from '../../store/persistence/cloud-sync/cloud-api';
+import {
+	cloudSaveStory,
+	reviewSaveStory,
+	ReviewSaveResult
+} from '../../store/persistence/cloud-sync/cloud-api';
 import {reviewCopyOf} from '../../util/review-copies';
 import './submit-review-banner.css';
 
@@ -60,25 +64,119 @@ function shortWallet(wallet: string): string {
 
 /**
  * The submit bar, or for a reviewer's copy of a submission (opened through
- * /review/...) a note that it's only for testing: it is never synced or
- * submitted.
+ * /review/...) the review bar: the copy is never synced or submitted, but
+ * "Save review" stores the reviewer's edits in the submission.
  */
 export const SubmitReviewBanner: React.FC<SubmitReviewBannerProps> = props => {
 	const review = reviewCopyOf(props.story.id);
 
 	if (review) {
 		return (
-			<div className="submit-review-banner submit-review-warn">
-				<IconAlertTriangle size={16} />
-				<span>
-					Review copy of a submission by {shortWallet(review.owner)}. Test
-					only, no changes will be saved or submitted.
-				</span>
-			</div>
+			<ReviewSaveBanner
+				story={props.story}
+				owner={review.owner}
+				storyId={review.storyId}
+			/>
 		);
 	}
 
 	return <SubmitBanner {...props} />;
+};
+
+type ReviewSaveState =
+	| 'idle'
+	| 'saving'
+	| 'saved'
+	| 'warnings'
+	| 'rejected'
+	| 'error';
+
+/**
+ * A reviewer's bar on a review copy. "Save review" sends the copy, with the
+ * reviewer's login, to PUT /twine-reviews/{owner}/{storyId}: the server checks
+ * it like a submit and stores it in the submission, which Approve then
+ * publishes. Only the editor makes this request - the story's own code runs in
+ * a sealed frame without the login (util/replace-dom.ts).
+ */
+const ReviewSaveBanner: React.FC<{
+	story: Story;
+	owner: string;
+	storyId: string;
+}> = ({story, owner, storyId}) => {
+	const [state, setState] = React.useState<ReviewSaveState>('idle');
+	const [result, setResult] = React.useState<ReviewSaveResult>({
+		ok: false,
+		status: 0
+	});
+
+	async function handleSave() {
+		setState('saving');
+
+		const saved = await reviewSaveStory(owner, storyId, story);
+
+		setResult(saved);
+
+		if (saved.ok) {
+			setState(saved.warnings && saved.warnings.length > 0 ? 'warnings' : 'saved');
+		} else if (saved.status === 200) {
+			setState('rejected');
+		} else {
+			setState('error');
+		}
+	}
+
+	const details = (result.errors || [])
+		.concat((result.warnings || []).map(w => `⚠ ${w}`))
+		.join('\n');
+	const count = (items?: string[]) => (items ? items.length : 0);
+	const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+	const bannerClass =
+		state === 'saved'
+			? 'submit-review-banner submit-review-submitted'
+			: state === 'rejected' || state === 'error'
+			? 'submit-review-banner submit-review-error'
+			: 'submit-review-banner submit-review-warn';
+
+	return (
+		<div className={bannerClass}>
+			{state === 'saved' ? (
+				<IconCheck size={16} />
+			) : state === 'rejected' || state === 'error' ? (
+				<IconX size={16} />
+			) : (
+				<IconAlertTriangle size={16} />
+			)}
+			<span>
+				{state === 'saved'
+					? 'Review saved - Approve publishes this version'
+					: state === 'warnings'
+					? `Review saved with ${plural(count(result.warnings), 'warning')}`
+					: state === 'rejected'
+					? `Not saved - ${plural(count(result.errors), 'error')}`
+					: state === 'error'
+					? result.status === 0
+						? 'Not saved - network error'
+						: `Not saved - ${result.detail || `error ${result.status}`}`
+					: `Review copy of a submission by ${shortWallet(owner)}. Never synced; Save review stores your edits in the submission.`}
+			</span>
+			{(state === 'warnings' || state === 'rejected') && (
+				<button
+					className="submit-review-btn submit-review-btn-details"
+					onClick={() => alert(details)}
+				>
+					Details
+				</button>
+			)}
+			<button
+				className="submit-review-btn"
+				onClick={handleSave}
+				disabled={state === 'saving'}
+			>
+				{state === 'saving' ? 'Saving…' : 'Save review'}
+			</button>
+		</div>
+	);
 };
 
 const SubmitBanner: React.FC<SubmitReviewBannerProps> = ({story}) => {
