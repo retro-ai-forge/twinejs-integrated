@@ -1,8 +1,11 @@
 import {
+	DIALOG_SHIM,
 	MEMORY_STORAGE_SHIM,
 	replaceDom,
+	SEALED_FRAME_CSP,
+	SEALED_FRAME_HEAD,
 	SEALED_FRAME_SANDBOX,
-	withMemoryStorage
+	sealedPage
 } from '../replace-dom';
 
 describe('replaceDom', () => {
@@ -16,7 +19,7 @@ describe('replaceDom', () => {
 		const frames = document.querySelectorAll('iframe');
 
 		expect(frames).toHaveLength(1);
-		expect(frames[0].getAttribute('srcdoc')).toBe(withMemoryStorage(story));
+		expect(frames[0].getAttribute('srcdoc')).toBe(sealedPage(story));
 		expect(document.body.textContent).not.toContain(
 			'This should be overwritten'
 		);
@@ -32,6 +35,8 @@ describe('replaceDom', () => {
 		expect(sandbox).not.toContain('allow-same-origin');
 		expect(sandbox).not.toContain('allow-top-navigation');
 		expect(sandbox).not.toContain('allow-popups');
+		// No alert/confirm/prompt over the app's address.
+		expect(sandbox).not.toContain('allow-modals');
 	});
 
 	it('names the tab after the story', () => {
@@ -43,23 +48,57 @@ describe('replaceDom', () => {
 	});
 });
 
-describe('withMemoryStorage', () => {
-	it('installs the in-memory storage before anything else in the page runs', () => {
-		const page = withMemoryStorage(
-			'<html><head lang="en"><script>sugarcube()</script></head></html>'
+describe('sealedPage', () => {
+	it('puts the content rules first, then the shims, before anything in the page runs', () => {
+		const page = sealedPage(
+			'<html><head lang="en"><style>p{}</style><script>sugarcube()</script></head></html>'
 		);
 
-		expect(page.indexOf(MEMORY_STORAGE_SHIM)).toBeGreaterThan(-1);
-		expect(page.indexOf(MEMORY_STORAGE_SHIM)).toBeLessThan(
-			page.indexOf('sugarcube()')
-		);
-		expect(page.startsWith('<html><head lang="en">')).toBe(true);
+		expect(page.startsWith('<html><head lang="en"><meta http-equiv="Content-Security-Policy"')).toBe(true);
+		expect(page.indexOf(DIALOG_SHIM)).toBeGreaterThan(-1);
+		expect(page.indexOf(MEMORY_STORAGE_SHIM)).toBeGreaterThan(page.indexOf(DIALOG_SHIM));
+		expect(page.indexOf(MEMORY_STORAGE_SHIM)).toBeLessThan(page.indexOf('<style>'));
+		expect(page.indexOf(MEMORY_STORAGE_SHIM)).toBeLessThan(page.indexOf('sugarcube()'));
 	});
 
-	it('still installs it in a page without a head', () => {
-		expect(withMemoryStorage('<p>x</p>')).toBe(
-			MEMORY_STORAGE_SHIM + '<p>x</p>'
+	it('still installs them in a page without a head', () => {
+		expect(sealedPage('<p>x</p>')).toBe(SEALED_FRAME_HEAD + '<p>x</p>');
+	});
+
+	it('lets the frame reach nothing outside but the story images', () => {
+		const rules = Object.fromEntries(
+			SEALED_FRAME_CSP.split('; ').map(rule => {
+				const [name, ...values] = rule.split(' ');
+
+				return [name, values];
+			})
 		);
+
+		expect(rules['default-src']).toEqual(["'none'"]);
+		expect(rules['connect-src']).toEqual(["'none'"]);
+		expect(rules['form-action']).toEqual(["'none'"]);
+		expect(rules['img-src']).toEqual([
+			'https://storage.googleapis.com/thewudlands.firebasestorage.app/',
+			'data:'
+		]);
+		expect(rules['font-src']).toEqual(['data:']);
+		// The content attribute is double-quoted: no double quote inside.
+		expect(SEALED_FRAME_CSP).not.toContain('"');
+	});
+
+	it('shows alert() messages in the page as text', () => {
+		document.body.innerHTML = '';
+		const frameWindow = {} as any;
+
+		new Function('window', DIALOG_SHIM.replace(/<\/?script>/g, ''))(frameWindow);
+		frameWindow.alert('Error: <b>bad</b>');
+
+		const box = document.querySelector('[role="alert"]')!;
+
+		expect(box.textContent).toBe('Error: <b>bad</b>');
+		expect(box.querySelector('b')).toBeNull();
+		(box as HTMLElement).click();
+		expect(document.querySelector('[role="alert"]')).toBeNull();
 	});
 
 	it('gives a working store where the frame has none', () => {

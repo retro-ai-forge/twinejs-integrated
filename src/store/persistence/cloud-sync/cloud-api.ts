@@ -139,6 +139,11 @@ export async function cloudDeleteStory(
  */
 export interface ReviewStory extends CloudStoryFull {
 	testCharacters?: Record<string, unknown>[] | null;
+	/**
+	 * Today's story check on the submission, which was stored as submitted -
+	 * possibly before a rule existed. Empty when it passes.
+	 */
+	checkProblems?: string[];
 }
 
 export type ReviewStoryResult =

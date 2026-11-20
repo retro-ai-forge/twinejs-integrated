@@ -13,6 +13,9 @@ import {reviewCopyOf} from './review-copies';
 
 const IMAGE_BUCKET = 'thewudlands.firebasestorage.app';
 
+/** Where every story image is served from: the sealed frame loads images only here. */
+export const STORY_IMAGES_BASE = `https://storage.googleapis.com/${IMAGE_BUCKET}/`;
+
 // The editor deals with the author's own working images, stored under the
 // "create" stage keyed by their wallet: twine-images/{wallet}/create/{id}/.
 // (review/served copies are made server-side on submit/deploy.) The one
@@ -68,7 +71,7 @@ export function imagePublicUrl(
 		: `twine-images/${ownerWallet}/${STAGE_CREATE}/${storyId}`;
 	const path = thumb ? `${dir}/thumbs/${filename}` : `${dir}/${filename}`;
 
-	return `https://storage.googleapis.com/${IMAGE_BUCKET}/${encodeURI(path)}`;
+	return `${STORY_IMAGES_BASE}${encodeURI(path)}`;
 }
 
 /** Backend endpoint for managing a story's images (list/upload/delete). */

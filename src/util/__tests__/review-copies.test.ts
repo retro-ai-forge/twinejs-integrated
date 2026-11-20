@@ -1,4 +1,6 @@
 import {
+	checkedProblems,
+	clearReviewProblems,
 	forgetReviewCopy,
 	markReviewCopy,
 	resetReviewCopies,
@@ -16,16 +18,16 @@ describe('review copies', () => {
 	});
 
 	it('remembers a copy across reloads', () => {
-		markReviewCopy('local-1', {owner: '5Owner', storyId: 'story-1'});
+		markReviewCopy('local-1', {owner: '5Owner', storyId: 'story-1', problems: []});
 		resetReviewCopies();
 
-		expect(reviewCopyOf('local-1')).toEqual({owner: '5Owner', storyId: 'story-1'});
+		expect(reviewCopyOf('local-1')).toEqual({owner: '5Owner', storyId: 'story-1', problems: []});
 		expect(reviewCopyIds('5Owner', 'story-1')).toEqual(['local-1']);
 		expect(reviewCopyOf('own-story')).toBeNull();
 	});
 
 	it('forgets a copy', () => {
-		markReviewCopy('local-1', {owner: '5Owner', storyId: 'story-1'});
+		markReviewCopy('local-1', {owner: '5Owner', storyId: 'story-1', problems: []});
 		forgetReviewCopy('local-1');
 		resetReviewCopies();
 
@@ -43,12 +45,43 @@ describe('review copies', () => {
 			JSON.stringify({a: {owner: 5}, b: {owner: '5Owner', storyId: 's'}})
 		);
 		expect(reviewCopyOf('a')).toBeNull();
-		expect(reviewCopyOf('b')).toEqual({owner: '5Owner', storyId: 's'});
+		// A record without problems (kept before they were) counts as unchecked.
+		expect(reviewCopyOf('b')).toEqual({
+			owner: '5Owner',
+			storyId: 's',
+			problems: checkedProblems(undefined)
+		});
+		expect(reviewCopyOf('b')!.problems).toHaveLength(1);
+	});
+
+	it('keeps the problems of today\'s check until a Save review clears them', () => {
+		markReviewCopy('local-1', {
+			owner: '5Owner',
+			storyId: 'story-1',
+			problems: ["Passage 'Start', line 1: <<run>> isn't accepted"]
+		});
+		resetReviewCopies();
+		expect(reviewCopyOf('local-1')!.problems).toEqual([
+			"Passage 'Start', line 1: <<run>> isn't accepted"
+		]);
+
+		clearReviewProblems('local-1');
+		resetReviewCopies();
+		expect(reviewCopyOf('local-1')!.problems).toEqual([]);
+	});
+
+	it('counts an answer without the check as unchecked', () => {
+		expect(checkedProblems(undefined)).toHaveLength(1);
+		expect(checkedProblems(null)).toHaveLength(1);
+		expect(checkedProblems([1])).toHaveLength(1);
+		expect(checkedProblems('x')).toHaveLength(1);
+		expect(checkedProblems([])).toEqual([]);
+		expect(checkedProblems(['a'])).toEqual(['a']);
 	});
 
 	it("shows a copy with the owner's review-stage images", () => {
 		setOwnerWallet('5Reviewer');
-		markReviewCopy('local-1', {owner: '5Owner', storyId: 'story-1'});
+		markReviewCopy('local-1', {owner: '5Owner', storyId: 'story-1', problems: []});
 
 		expect(imagePublicUrl('local-1', 'gate.jpg')).toBe(
 			`${BUCKET}/twine-images/5Owner/review/story-1/gate.jpg`

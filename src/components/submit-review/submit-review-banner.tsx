@@ -7,7 +7,7 @@ import {
 	ReviewSaveResult
 } from '../../store/persistence/cloud-sync/cloud-api';
 import {platformStoryFormat} from '../../store/story-formats/defaults';
-import {reviewCopyOf} from '../../util/review-copies';
+import {clearReviewProblems, reviewCopyOf} from '../../util/review-copies';
 import './submit-review-banner.css';
 
 export interface SubmitReviewBannerProps {
@@ -109,6 +109,11 @@ const ReviewSaveBanner: React.FC<{
 		ok: false,
 		status: 0
 	});
+	// Today's story check on the submission as opened: while there are
+	// problems, Test and Play refuse the copy (store/use-publishing.ts).
+	const [problems, setProblems] = React.useState<string[]>(
+		() => reviewCopyOf(story.id)?.problems ?? []
+	);
 
 	async function handleSave() {
 		setState('saving');
@@ -118,6 +123,9 @@ const ReviewSaveBanner: React.FC<{
 		setResult(saved);
 
 		if (saved.ok) {
+			// The server checked the saved copy: it may run now.
+			clearReviewProblems(story.id);
+			setProblems([]);
 			setState(saved.warnings && saved.warnings.length > 0 ? 'warnings' : 'saved');
 		} else if (saved.status === 200) {
 			setState('rejected');
@@ -132,10 +140,11 @@ const ReviewSaveBanner: React.FC<{
 	const count = (items?: string[]) => (items ? items.length : 0);
 	const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+	const unchecked = state === 'idle' && problems.length > 0;
 	const bannerClass =
 		state === 'saved'
 			? 'submit-review-banner submit-review-submitted'
-			: state === 'rejected' || state === 'error'
+			: state === 'rejected' || state === 'error' || unchecked
 			? 'submit-review-banner submit-review-error'
 			: 'submit-review-banner submit-review-warn';
 
@@ -143,7 +152,7 @@ const ReviewSaveBanner: React.FC<{
 		<div className={bannerClass}>
 			{state === 'saved' ? (
 				<IconCheck size={16} />
-			) : state === 'rejected' || state === 'error' ? (
+			) : state === 'rejected' || state === 'error' || unchecked ? (
 				<IconX size={16} />
 			) : (
 				<IconAlertTriangle size={16} />
@@ -159,8 +168,18 @@ const ReviewSaveBanner: React.FC<{
 					? result.status === 0
 						? 'Not saved - network error'
 						: `Not saved - ${result.detail || `error ${result.status}`}`
+					: unchecked
+					? `Fails today's story check - ${plural(problems.length, 'problem')}. Test and Play stay off until a Save review passes.`
 					: `Review copy of a submission by ${shortWallet(owner)}. Never synced; Save review stores your edits in the submission.`}
 			</span>
+			{unchecked && (
+				<button
+					className="submit-review-btn submit-review-btn-details"
+					onClick={() => alert(problems.join('\n'))}
+				>
+					Details
+				</button>
+			)}
 			{(state === 'warnings' || state === 'rejected') && (
 				<button
 					className="submit-review-btn submit-review-btn-details"

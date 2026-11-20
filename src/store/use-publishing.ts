@@ -13,6 +13,25 @@ import {
 } from './story-formats';
 import {storyWithId, useStoriesContext} from './stories';
 import {getAppInfo} from '../util/app-info';
+import {reviewCopyOf} from '../util/review-copies';
+
+/**
+ * A review copy whose submission fails today's story check doesn't run: its
+ * code was never checked against the current rules (util/review-copies.ts).
+ */
+export function refuseUncheckedReviewCopy(storyId: string): void {
+	const problems = reviewCopyOf(storyId)?.problems ?? [];
+
+	if (problems.length > 0) {
+		const more =
+			problems.length > 1 ? ` (and ${problems.length - 1} more)` : '';
+
+		throw new Error(
+			`This submission fails today's story check, so it doesn't run until ` +
+				`a Save review passes: ${problems[0]}${more}. Proof still shows its text.`
+		);
+	}
+}
 
 export interface UsePublishingProps {
 	proofStory: (storyId: string) => Promise<string>;
@@ -74,6 +93,8 @@ export function usePublishing(): UsePublishingProps {
 		),
 		publishStory: React.useCallback(
 			async (storyId, publishOptions) => {
+				refuseUncheckedReviewCopy(storyId);
+
 				const story = storyWithId(stories, storyId);
 				const format = formatWithNameAndVersion(
 					formats,

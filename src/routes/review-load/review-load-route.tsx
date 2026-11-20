@@ -4,6 +4,7 @@ import {v4 as uuid} from '@lukeed/uuid';
 import {useStoriesContext} from '../../store/stories';
 import {reviewGetStory} from '../../store/persistence/cloud-sync/cloud-api';
 import {
+	checkedProblems,
 	forgetReviewCopy,
 	markReviewCopy,
 	reviewCopyIds
@@ -69,8 +70,13 @@ export const ReviewLoadRoute: React.FC = () => {
 				stories.filter(s => !older.includes(s.id)).map(s => s.name)
 			);
 
-			// Marked before it is created, so cloud sync never picks it up.
-			markReviewCopy(localId, {owner, storyId});
+			// Marked before it is created, so cloud sync never picks it up. The
+			// problems keep Test and Play off until a Save review passes.
+			markReviewCopy(localId, {
+				owner,
+				storyId,
+				problems: checkedProblems(result.story.checkProblems)
+			});
 			dispatch({type: 'createStory', props: story});
 			history.replace(`/stories/${localId}`);
 		})();
