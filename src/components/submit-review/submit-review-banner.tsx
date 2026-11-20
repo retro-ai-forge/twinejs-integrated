@@ -6,6 +6,7 @@ import {
 	reviewSaveStory,
 	ReviewSaveResult
 } from '../../store/persistence/cloud-sync/cloud-api';
+import {platformStoryFormat} from '../../store/story-formats/defaults';
 import {reviewCopyOf} from '../../util/review-copies';
 import './submit-review-banner.css';
 
@@ -187,7 +188,11 @@ const SubmitBanner: React.FC<SubmitReviewBannerProps> = ({story}) => {
 	const [imageCount, setImageCount] = React.useState(0);
 	const rampRef = React.useRef<number>();
 
-	const isSugarCube = story.storyFormat.toLowerCase().includes('sugarcube');
+	// The server accepts only the platform's SugarCube (backend/story_rules.py).
+	const formatLabel = `${platformStoryFormat.name} ${platformStoryFormat.version}`;
+	const isSugarCube =
+		story.storyFormat === platformStoryFormat.name &&
+		story.storyFormatVersion === platformStoryFormat.version;
 
 	React.useEffect(
 		() => () => {
@@ -232,7 +237,9 @@ const SubmitBanner: React.FC<SubmitReviewBannerProps> = ({story}) => {
 
 	async function handleSubmit() {
 		if (!isSugarCube) {
-			setResult({errorMessage: 'Only SugarCube stories can be submitted'});
+			setResult({
+				errorMessage: `Only ${formatLabel} stories can be submitted - choose it under Story > Details`
+			});
 			setState('error');
 			return;
 		}
@@ -389,7 +396,7 @@ const SubmitBanner: React.FC<SubmitReviewBannerProps> = ({story}) => {
 					<span>{story.name}</span>
 					{!isSugarCube && (
 						<span className="submit-review-format-note">
-							(SugarCube only)
+							({formatLabel} only)
 						</span>
 					)}
 					<button

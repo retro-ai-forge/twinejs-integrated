@@ -1,5 +1,9 @@
-import {CloudStoryFull} from '../../../store/persistence/cloud-sync/cloud-api';
-import {reviewCopyStory} from '../review-copy-story';
+import {ReviewStory} from '../../../store/persistence/cloud-sync/cloud-api';
+import {
+	reviewCopyStory,
+	TEST_CHARACTERS_PASSAGE,
+	testCharactersText
+} from '../review-copy-story';
 
 function passage(id: string, name: string, text: string) {
 	return {
@@ -17,7 +21,7 @@ function passage(id: string, name: string, text: string) {
 	};
 }
 
-const submission: CloudStoryFull = {
+const submission: ReviewStory = {
 	storyId: 'story-1',
 	ifid: 'IFID-1',
 	name: 'A Tale',
@@ -44,6 +48,53 @@ describe('reviewCopyStory', () => {
 			'Start'
 		);
 		expect(story.storyFormat).toBe('SugarCube');
+	});
+
+	it('always uses the platform\'s SugarCube, whatever the submission names', () => {
+		const story = reviewCopyStory(
+			{
+				...submission,
+				storyData: {
+					...submission.storyData,
+					storyFormat: 'SugarCube',
+					storyFormatVersion: '2.99.0'
+				}
+			},
+			'l',
+			[]
+		);
+
+		expect(story.storyFormat).toBe('SugarCube');
+		expect(story.storyFormatVersion).toBe('2.37.3');
+	});
+
+	it('puts the stored test party back as a TestCharacters scene', () => {
+		const party = [
+			{firstName: 'Grimjaw', lastName: 'Ironfoot', might: 18},
+			{firstName: 'Elara', lastName: 'Moonwhisper', might: 6}
+		];
+		const story = reviewCopyStory(
+			{...submission, testCharacters: party},
+			'local-1',
+			[]
+		);
+		const scene = story.passages.find(
+			p => p.name === TEST_CHARACTERS_PASSAGE
+		);
+
+		expect(scene?.story).toBe('local-1');
+		expect(scene?.text).toBe(testCharactersText(party));
+		expect(JSON.parse(scene!.text)).toEqual(party);
+		expect(scene!.text.split('\n')).toHaveLength(4);
+		expect(new Set(story.passages.map(p => p.id)).size).toBe(3);
+	});
+
+	it('adds no TestCharacters scene without a stored party', () => {
+		for (const testCharacters of [undefined, null, []]) {
+			const story = reviewCopyStory({...submission, testCharacters}, 'l', []);
+
+			expect(story.passages.map(p => p.name)).toEqual(['StoryInit', 'Start']);
+		}
 	});
 
 	it('is named after the submission without clashing', () => {

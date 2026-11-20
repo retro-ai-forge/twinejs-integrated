@@ -16,7 +16,6 @@ import {
 	StoryFormat,
 	useStoryFormatsContext
 } from '../../store/story-formats';
-import {AddStoryFormatButton} from './add-story-format-button';
 import {StoryFormatsFilterButton} from './story-formats-filter-button';
 import './story-formats.css';
 
@@ -81,8 +80,9 @@ export const StoryFormatsDialog: React.FC<StoryFormatsDialogProps> = props => {
 				className="story-formats-dialog"
 				headerLabel={t('dialogs.storyFormats.title')}
 			>
+				{/* No Add button: the Wudlands editor runs only its built-in formats,
+				    since a format's code runs on the app's address with the login. */}
 				<ButtonBar>
-					<AddStoryFormatButton />
 					<StoryFormatsFilterButton />
 				</ButtonBar>
 				<CardContent>

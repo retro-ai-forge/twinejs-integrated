@@ -95,19 +95,22 @@ describe('Story format reducer', () => {
 			);
 		});
 
-		it('does not take any action on user-added formats', () => {
+		it('removes user-added formats, even one named like a builtin', () => {
 			const state = [format, format2];
 
 			format.userAdded = true;
 			format.version = '1.1.0';
 			format2.userAdded = true;
-			format2.name = format.name;
-			format2.version = '1.0.0';
+			format2.name = builtinFormats[0].name;
+			format2.version = builtinFormats[0].version;
 
 			const result = reducer(state, {type: 'repair'});
 
-			expect(result.includes(format)).toBe(true);
-			expect(result.includes(format2)).toBe(true);
+			expect(result.includes(format)).toBe(false);
+			expect(result.includes(format2)).toBe(false);
+			expect(result).toEqual(
+				builtinFormats.map(format => ({...format, id: expect.any(String)}))
+			);
 		});
 	});
 });

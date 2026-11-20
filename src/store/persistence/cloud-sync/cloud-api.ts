@@ -133,8 +133,16 @@ export async function cloudDeleteStory(
 	return apiFetch(`/${encodeURIComponent(storyId)}`, {method: 'DELETE'});
 }
 
+/**
+ * A submission as the review endpoint sends it: the story, plus its test party
+ * (stored apart from the scenes on submit, null when it has none).
+ */
+export interface ReviewStory extends CloudStoryFull {
+	testCharacters?: Record<string, unknown>[] | null;
+}
+
 export type ReviewStoryResult =
-	| {ok: true; story: CloudStoryFull}
+	| {ok: true; story: ReviewStory}
 	| {ok: false; status: number};
 
 /**

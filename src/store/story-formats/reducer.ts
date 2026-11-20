@@ -18,11 +18,14 @@ export const reducer: React.Reducer<StoryFormatsState, StoryFormatsAction> = (
 		case 'repair': {
 			const builtinFormats = builtins();
 
-			// Filter out any outdated builtins.
+			// Filter out any outdated builtins, and every user-added format: the
+			// Wudlands editor runs only its built-in formats. A format's code runs
+			// on the app's own address with the viewer's login, so none may come
+			// from elsewhere (the Add button is gone too).
 
 			const result = state.filter(format => {
 				const keep =
-					format.userAdded ||
+					!format.userAdded &&
 					builtinFormats.some(
 						f => f.name === format.name && f.version === format.version
 					);
@@ -30,7 +33,9 @@ export const reducer: React.Reducer<StoryFormatsState, StoryFormatsAction> = (
 				if (!keep) {
 					console.info(
 						`Repairing story formats by removing ${format.name} ${format.version} ` +
-							`(outdated version of built-in format)`
+							(format.userAdded
+								? '(user-added formats are not used)'
+								: '(outdated version of built-in format)')
 					);
 				}
 

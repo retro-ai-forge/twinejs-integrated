@@ -6,6 +6,7 @@ import 'jest-canvas-mock';
 // Always mock these files so that Jest doesn't see import.meta.
 
 jest.mock('./util/i18n');
+jest.mock('./util/base-url');
 
 // Mock this component so that we don't get spurious errors around needing
 // focusable elements, because often we're mocking contents.
