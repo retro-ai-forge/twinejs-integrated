@@ -298,7 +298,7 @@ The main app's Dockerfile stays as it is.
 
 1. **Printed values as text:** the runtime change that makes `<<print>>` and a plain `$name` show values as plain text.
 2. **Permanent test against SugarCube:** turn the 2026-11-21 scratch scripts into a test that plays every refused and accepted example in the real SugarCube.
-3. **Quoted button forms (decided 2026-11-21: they stay):** `<<button "Go" "Cave">>` and `<<goto>>` inside buttons are how a button sends the player to a random scene, so they stay. The step graph (`backend/twine_graph.py`, today only `[[links]]` and image links) is to be built from the story check's own reading of each scene instead, so these exits count too, per label (`ARCHITECTURE.md` "Every click").
+3. **Quoted button forms (decided 2026-11-21: they stay):** `<<button "Go" "Cave">>` and `<<goto>>` inside buttons are how a button sends the player to a random scene, so they stay. Since 2026-11-22 the step graph (`backend/twine_graph.py`) and the submit check's structure rules add these exits from the story check's own reading of each scene (`story_rules.macro_exits`), random jumps included; the map from each label to its scenes follows when the control layer checks clicks by label (`ARCHITECTURE.md` "Every click").
 4. **`TestCharacters` in the editor's Test:** load the party into `$char` and `$lead`.
 5. **Editor placeholders** for the control layer's commands and results (a skill check, a fight, a side story's outcome), for example **Pass** / **Fail** buttons, so both branches can be tested in the editor, and one button per test-party member for `<<pick_member>>` (`ARCHITECTURE.md` "Picking a party member").
 6. **Character values:** align `$char` with the story rules (see "Characters inside SugarCube").
