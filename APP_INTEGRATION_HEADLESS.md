@@ -14,7 +14,7 @@ Updated 2026-11-21. The platform side lives in the main app repository: services
 | Review copies (a submission opened in a reviewer's editor) | Built; re-checked when opened, since 2026-11-21 |
 | Story check (`backend/story_rules.py`, `_check_twine_syntax`) | Built 2026-11-20; story name, `stylesheet` tag, tags and story fields since 2026-11-21 |
 | Story check tested against the real SugarCube | Done once (2026-11-21, scratch scripts); to become a permanent test |
-| Engine (Node.js + jsdom + SugarCube) | Proof of concept only (scratch scripts, 2026-11-19) |
+| Engine (Node.js + jsdom + SugarCube) | Proof of concept only (scratch scripts, 2026-11-19); API drafted 2026-11-22; code to live in `engine/` |
 | `TestCharacters` loaded into the editor's Test | Planned |
 | Printed values shown as plain text (runtime change) | Planned |
 | Editor placeholders for skill checks, fights and side-story results | Planned |
@@ -130,7 +130,7 @@ A headless browser was dropped for its memory use; a Python reimplementation of 
 
 - **Same output as the browser:** two scenes from Twine-style browser play and from the engine's HTML plus the story CSS were pixel-identical, with the same clickable elements.
 - **Every link form worked:** `[[links]]`, `<<area>>` hotspots, both `<<button>>` forms, `<<link>>`, a button that sets a variable, and radio buttons.
-- **One shim needed:** jsdom has no layout, so SugarCube waits forever for a window width. The engine gives the page a fixed viewport size before SugarCube starts.
+- **Three shims needed** (the last two found 2026-11-21): a fixed viewport width, because jsdom has no layout and SugarCube waits forever for a window width; Web Storage, because jsdom has none without a page address and SugarCube stops with "All usable storage APIs are missing" (the engine gives it in-memory storage, like the editor's sealed frame); and an empty `window.scroll`, which jsdom doesn't implement.
 - **Memory creep:** over 300 clicks the engine's JavaScript memory stayed flat, but the process grew to about 250 MB, so shared workers are restarted every few hundred clicks.
 
 ### Building the page
@@ -185,15 +185,110 @@ jsdom's script settings can't prevent this: with scripts off SugarCube never sta
 
 **Accepted risk of shared workers** (decided 2026-11-19, now only for reviewed stories on `engine-live`): a harmful story that gets past the story check and review could, until its worker restarts, change other stories' scenes in the same worker (for example add a fake "reconnect your wallet" message), read their text and players' variables, push their players into `LastResort`, and report false results (Legend changes still stay within each story's points). Separate workers per author would close this at about 90 to 250 MB per active author; revisit if story submission opens to everyone.
 
+### The engine's API (draft, 2026-11-22)
+
+Internal HTTP with JSON, called only by `serverless-wudlands` (Google ID token, `run.invoker`). The engine keeps nothing between calls except its cache of built story pages: everything else comes with each call and goes back in the answer, and the control layer stores it in the frame. Every call has a time limit of 2 seconds.
+
+| Call | When |
+|---|---|
+| `POST /start` | A story begins in a new frame: the run's main story, a side story pushed onto the stack, a test run |
+| `POST /step` | The player clicked a story choice in the top frame |
+| `POST /move` | The control layer sends the frame to a scene itself: `Retreat`, `LastResort`, or a skill check's success or failure scene |
+
+**Request** (one shape for all three; each call uses the fields it needs):
+
+```json
+{
+  "snapshot": { "id": "author:storyId:hash", "story": null },
+  "frame":    { "state": "…", "engineVersion": "1" },
+  "party": {
+    "shown":    [ { "id": "c1", "name": "Alrik", "might": 7, "mercy": 12 } ],
+    "now":      [ { "id": "c1", "name": "Alrik", "might": 6, "mercy": 12 } ],
+    "leadId":   "c1",
+    "pickedId": "c1"
+  },
+  "keep":    { "metHermit": true },
+  "results": { "sideResult": "fled" },
+  "choice":  { "label": "Climb the cliff" },
+  "picks":   [ "North", "Move carefully", "Sword" ],
+  "move":    { "to": "Retreat" }
+}
+```
+
+- **`snapshot`:** the pinned story's id. `story` (its scenes and story data) comes only after the engine answered `unknown_snapshot`; the engine then builds the page and caches it per id.
+- **`frame.state`:** SugarCube's saved state exactly as the engine last returned it, opaque to the control layer; `null` on `/start`. `frame.engineVersion`: the engine version that saved it.
+- **`party.shown`:** `$char` as it was when the current scene was first shown (the control layer kept it from the last call's `party.now`). The engine re-shows the scene with it, so the scene renders as the player saw it and its changes aren't counted twice. **`party.now`:** fresh character data for the next scene. The fields are those of "Characters inside SugarCube"; characters are named by their character id only, never by wallet address, session id or anything about other players.
+- **`leadId`, `pickedId`:** who `$lead` and `$picked` are.
+- **`keep`:** only on `/start`: the `$keep_` values from the lead's story memory, set after `StoryInit`.
+- **`results`:** only when a parked frame resumes after a pop: variables written into its state before the remembered click is applied (such as the side story's outcome).
+- **`choice`:** only on `/step`: `{"label": "…"}` for a link or button, `{"handle": "h1"}` for a hotspot (handles come with the previous answer).
+- **`picks`:** only on `/step`: the texts the player picked, that is the label of each selected radio button and ticked checkbox and the chosen option of each drop-down and cycle. Every text a player can pick appears once in its scene (story check), so the text alone says which input it belongs to. A radio group or list without a pick keeps the value the story gave it; an unticked checkbox isn't listed.
+- **`move.to`:** only on `/move`: `Retreat`, `LastResort`, or one of the two scenes of the check the previous answer reported.
+
+**Answer:**
+
+```json
+{
+  "status": "ok",
+  "engineVersion": "1",
+  "scene":   { "name": "CliffTop", "tags": ["camp"] },
+  "html":    "<div class=\"passage\">… <button data-choice=\"0\">Follow the rope up</button> …</div>",
+  "choices": [ { "label": "Follow the rope up" }, { "handle": "h1" } ],
+  "inputs":  [
+    { "kind": "radio",    "labels": ["North", "South"], "picked": "North" },
+    { "kind": "checkbox", "label": "Move carefully",    "checked": false },
+    { "kind": "listbox",  "options": ["Sword", "Bow"],  "picked": "Sword" }
+  ],
+  "state":        "…",
+  "isEnding":     false,
+  "allowRunAway": true,
+  "legend":   { "c1": { "mercy": 3 } },
+  "keep":     { "metHermit": true },
+  "requests": []
+}
+```
+
+- **`scene`:** for the control layer only, never sent to the browser: the scene's name (for the step check, the side-story chance, the stored last scene) and its tags (`camp` opens the camp).
+- **`html`:** the cleaned scene (see "Cleaning the output"). Each clickable element carries `data-choice` with its place in `choices`, each input `data-input` with its place in `inputs`, and nothing else behind them. Image names stay as the story wrote them; the control layer rewrites them to the bucket URLs of the story's stage (`review` for test runs, `served` for live stories), because it knows which one applies. No platform buttons (Retreat, Leave, Settings, `<<pick_member>>` buttons): the control layer sends those next to the scene (`ARCHITECTURE.md` "What the player receives").
+- **`choices`:** in the order they appear: links and buttons by their text, hotspots by a neutral handle numbered per scene.
+- **`inputs`:** every radio group, checkbox, drop-down and cycle with what is picked now, so the play screen can show it and send picks back.
+- **`state`:** the new saved state, for the frame. At most 64 KB.
+- **`isEnding`, `allowRunAway`:** the current `$isEnding` and `$meta_allowRunAway`, for Leave and Retreat.
+- **`legend`:** per character id, the Legend changes written by the clicked element's commands and by the new scene's own text (never the re-shown scene's). Python applies them by the Legend rules and the story's points.
+- **`keep`:** the `$keep_` values this call changed. The control layer writes them to every member's story memory once the step is saved.
+- **`requests`:** what the story asked the control layer for, empty for now. Planned: a skill check (`{"kind": "check", "skill": "climb", "difficulty": "hard", "pass": "Cliff top", "fail": "Cliff bottom"}`, which comes with `status: "check"` and no new scene), `<<pick_member>>`, fights, consequence tags, `<<forage>>`.
+
+**Other answers:**
+
+| `status` | Meaning | What the control layer does |
+|---|---|---|
+| `check` | The click is a skill check; the frame hasn't moved | Rolls, then calls `/move` to `pass` or `fail` |
+| `unknown_snapshot` | The engine has no page for this id | Calls again with `snapshot.story` |
+| `refused` | The label or handle isn't in the re-shown scene (`reason: "label_gone"`); the answer carries that scene as it is now | Shows that scene; nothing ran |
+| `story_error` | SugarCube reported an error (the message is for reviewers and logs, never for the player) | Moves the frame to `LastResort` |
+| `time_limit` | The call took longer than 2 seconds | Moves the frame to `LastResort` |
+| `too_large` | The state is over 64 KB or the HTML over 256 KB | Moves the frame to `LastResort` |
+| `version_mismatch` | This engine can't restore a state saved by `frame.engineVersion` | Moves the frame to `LastResort`, which gives the run back (decided 2026-11-22) |
+
+**Rules:**
+
+- **The engine calculates, the control layer decides.** Everything in an answer is checked again (`ARCHITECTURE.md` "Every click"): the new scene must be one the clicked choice can lead to (the step graph), Legend changes stay within the rules and the story's points, the HTML is cleaned again, sizes are limited.
+- **The engine version** is part of the image and changes only when the runtime or SugarCube changes so that older saved states can't be restored. Each frame keeps the version that saved it.
+- **The same call gives the same answer,** except for random numbers: drawn at the click (the main use) or in a re-shown scene's text (accepted, see "Random numbers in a story").
+
 ### Engine service layout (planned)
 
+In this repository, next to the editor code it reuses (decided 2026-11-22: `engine/` for now):
+
 ```
-twine-engine/            Node.js service, deployed as engine-live and engine-test
-├── server.js            internal HTTP API: start, choose, move to Retreat or LastResort
+engine/                  Node.js service, deployed as engine-live and engine-test
+├── package.json         its own dependencies (jsdom pinned); bundles the editor files it needs
+├── server.js            internal HTTP API: /start, /step, /move (see "The engine's API")
 ├── workers.js           shared workers (recycled every few hundred clicks) or single-use processes
-├── page.js              builds the story page: the editor's publish code + format.js + runtime
-├── run.js               one click: restore, picks, click, fresh $char/$lead, count Legend changes, clean
-├── shims.js             fixed viewport size and other jsdom gaps
+├── page.js              builds the story page: src/util/publish.ts + the built-in format.js + src/util/wudlands-runtime.ts
+├── run.js               one call: restore, picks, click, fresh $char/$lead, count Legend and $keep_ changes, clean
+├── shims.js             viewport width, in-memory Web Storage, window.scroll
+├── test/                plays every Accepted and Not accepted example of the story rules in the real SugarCube
 └── Dockerfile           Node only, no secrets, no outbound network
 ```
 
