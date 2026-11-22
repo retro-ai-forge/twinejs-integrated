@@ -1,0 +1,9 @@
+# Only what the engine image needs from the twinejs-integrated folder.
+*
+!engine/package.json
+!engine/package-lock.json
+!engine/build.js
+!engine/src/
+!src/util/publish.ts
+!src/util/wudlands-runtime.ts
+!public/story-formats/sugarcube-2.37.3/format.js

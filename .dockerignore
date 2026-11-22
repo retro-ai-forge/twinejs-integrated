@@ -1,0 +1,10 @@
+# Used by engine/Dockerfile, the only Docker build in this repository (build context: this folder).
+# BuildKit also reads engine/Dockerfile.dockerignore; the older builder only this file.
+*
+!engine/package.json
+!engine/package-lock.json
+!engine/build.js
+!engine/src/
+!src/util/publish.ts
+!src/util/wudlands-runtime.ts
+!public/story-formats/sugarcube-2.37.3/format.js

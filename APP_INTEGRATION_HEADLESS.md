@@ -13,8 +13,8 @@ Updated 2026-11-21. The platform side lives in the main app repository: services
 | Sealed frame for every story run in the editor | Built 2026-11-20; no dialogs and no network since 2026-11-21 |
 | Review copies (a submission opened in a reviewer's editor) | Built; re-checked when opened, since 2026-11-21 |
 | Story check (`backend/story_rules.py`, `_check_twine_syntax`) | Built 2026-11-20; story name, `stylesheet` tag, tags and story fields since 2026-11-21 |
-| Story check tested against the real SugarCube | Done once (2026-11-21, scratch scripts); to become a permanent test |
-| Engine (Node.js + jsdom + SugarCube) | Proof of concept only (scratch scripts, 2026-11-19); API drafted 2026-11-22; code to live in `engine/` |
+| Story check tested against the real SugarCube | Permanent test since 2026-11-22 (`engine/test/rules.test.js`): every Accepted example of the story rules plays without an error |
+| Engine (Node.js + jsdom + SugarCube) | Built 2026-11-22 in `engine/`, not deployed yet: `/start`, `/step`, `/move`, both worker modes, the limits, the Docker image (`npm test`, 29 tests) |
 | `TestCharacters` loaded into the editor's Test | Planned |
 | Printed values shown as plain text (runtime change) | Planned |
 | Editor placeholders for skill checks, fights and side-story results | Planned |
@@ -140,7 +140,7 @@ From the pinned scenes, with the editor's own publish code (`src/util/publish.ts
 ### One click
 
 - **Starting a story** (also a side story pushed onto the stack): build the page, let SugarCube run `StoryInit`, set `$char` and `$lead`, render the start scene and return it with the saved state and the start scene's Legend changes.
-- **Each step:** restore SugarCube from the saved state, the way a browser reload does. The state is the scene and its variables as they were when the scene began, character data included, so the scene renders the same way again (for random numbers see below). Besides that scene only the startup code runs again (the runtime and `StoryInit`, whose values the saved state then replaces). Then apply the picks (radio buttons, checkboxes, drop-downs, cycles), click the chosen element (its commands and setters run, and SugarCube moves to the next scene, which gets the fresh character data), clean and number the new scene, and return it with the new state, `$isEnding` and each character's Legend changes.
+- **Each step:** restore SugarCube from the saved state, the way a browser reload does, then put the variables back as the player had them. The saved state has two parts (`engine/src/play.js`): SugarCube's own session entry, which holds the scene as it began and lets SugarCube show it again (only the startup code runs besides, the runtime and `StoryInit`), and the story variables as they were at the end of the last call. Those are put back into SugarCube's own objects after the scene is shown again, so a loop's `_c` keeps pointing at its character. That matters because SugarCube saves only when the story moves to a new scene: a button that stays in the scene (`<<link "Drink">><<set $water -= 1>><</link>>`) changes only the variables, and the next click must see the change, as in a browser. Then apply the picks by their texts (radio buttons, checkboxes, drop-downs, cycles), click the chosen element (its commands and setters run, and SugarCube moves to the next scene, which gets the fresh character data), clean and number the new scene, and return it with the new state, `$isEnding` and each character's Legend changes. SugarCube keeps one history step (`Config.history.maxStates = 1`), so the saved state stays a few hundred bytes (434 after many steps in the tests), and `visited()` still counts every visit.
 - **Resuming a parked story** after a side story or fight is a normal step: the control layer writes the result variables into the parked state and sends the remembered click.
 - **A skill check at a click** is reported to the control layer without moving on; it rolls, and the engine then enters the success or the failure scene.
 - **Moving to `Retreat` or `LastResort`** is a move the control layer asks for; the browser can't.
@@ -153,6 +153,8 @@ Stories may use `random(min, max)` and `either(a, b, ...)` (the story rules). Wh
 
 - **At a click,** between a link's or button's tags: the main use, sending the player to a random scene from a selection. This is for pure chance, such as which way the current carries the boat; skill checks such as a jump or a climb are rolled by the control layer instead (a check command, see `ARCHITECTURE.md` "Skill checks"). The number is drawn once while the click runs, the scene it leads to is saved, nothing is kept or repeated, and the player never sees a number, only where they end up.
 - **While a scene is shown,** in the scene's own text, such as `<<set $guard to either("asleep", "awake")>>` followed by `<<switch $guard>>`: the engine shows that scene again when it handles the next click, because it restores the state from when the scene began. A fresh draw could then give "awake" where the player saw "asleep", with other text and other choices: the label the player clicked may be gone (the click is then refused and the scene shown as it is now), or another button may carry it.
+
+**Better since 2026-11-22:** the engine puts the variables back after showing a scene again (see "One click"), so a number rolled in a scene's text and kept in a variable is the one the button sees, as the player had it (`engine/test/play.test.js`). What follows applies only to what the scene's text shows and offers.
 
 **Decided 2026-11-21: accepted.** A number drawn in a scene's own text is drawn again whenever the engine shows the scene again. That fits The Wudlands: things change overnight, take what you have. For text that is harmless: the player only ever sees the scene as it was first shown, and the engine's second showing is only there to make the click. It must not decide which buttons or links the scene offers, or a click could be refused, or land on a same-labelled choice the player never saw. So randomness that chooses the way on belongs in the button (the main use), and reviewers look out for random choices in a scene's text. If this ever causes trouble, SugarCube's seeded random fixes it: the runtime calls `State.prng.init()` at start (SugarCube 2.37.3 allows it in the Story JavaScript, where the runtime sits), SugarCube then keeps the seed and how many numbers were drawn in the state it saves anyway, and the scene shown again draws the same numbers. Nothing extra would be stored, and the seed stays with the server and the engine.
 
@@ -181,7 +183,7 @@ jsdom's script settings can't prevent this: with scripts off SugarCube never sta
 3. **Node's permission model:** no child processes and no file access beyond its own files (in the test it blocked the shell command and the file read). It can't block the network, hence the platform rule.
 4. **jsdom settings:** `runScripts: "dangerously"`, because SugarCube itself is a script; `resources` off, so the page fetches nothing.
 5. **Limits:** a time limit per click (2 seconds stopped an endless loop in the test) and a memory limit.
-6. **Worker modes:** unreviewed stories (`engine-test`) get a fresh process for every click. Reviewed stories (`engine-live`) share workers, restarted every few hundred clicks.
+6. **Worker modes:** unreviewed stories (`engine-test`) get a fresh worker for every click, ended afterwards. Reviewed stories (`engine-live`) share workers, replaced every few hundred clicks. Workers are worker threads (`engine/src/pool.js`), each its own JavaScript world (a V8 isolate), so story code in one can't reach another's pages or players; the whole process, workers included, runs under Node's permission model, which holds in worker threads too (checked in Node 22.22: reading files outside the engine, writing files and starting programs are refused there, `engine/test/server.test.js`). A worker over the time limit is ended (`time_limit`); one that runs out of its memory (256 MB) dies (`story_error`).
 
 **Accepted risk of shared workers** (decided 2026-11-19, now only for reviewed stories on `engine-live`): a harmful story that gets past the story check and review could, until its worker restarts, change other stories' scenes in the same worker (for example add a fake "reconnect your wallet" message), read their text and players' variables, push their players into `LastResort`, and report false results (Legend changes still stay within each story's points). Separate workers per author would close this at about 90 to 250 MB per active author; revisit if story submission opens to everyone.
 
@@ -276,28 +278,41 @@ Internal HTTP with JSON, called only by `serverless-wudlands` (Google ID token, 
 - **The engine version** is part of the image and changes only when the runtime or SugarCube changes so that older saved states can't be restored. Each frame keeps the version that saved it.
 - **The same call gives the same answer,** except for random numbers: drawn at the click (the main use) or in a re-shown scene's text (accepted, see "Random numbers in a story").
 
-### Engine service layout (planned)
+### Engine service layout
 
-In this repository, next to the editor code it reuses (decided 2026-11-22: `engine/` for now):
+In this repository, next to the editor code it reuses (decided 2026-11-22: `engine/` for now). `cd engine && npm test` builds and runs the tests; the image is built from this folder with `docker build -f engine/Dockerfile .`.
 
 ```
-engine/                  Node.js service, deployed as engine-live and engine-test
-├── package.json         its own dependencies (jsdom pinned); bundles the editor files it needs
-├── server.js            internal HTTP API: /start, /step, /move (see "The engine's API")
-├── workers.js           shared workers (recycled every few hundred clicks) or single-use processes
-├── page.js              builds the story page: src/util/publish.ts + the built-in format.js + src/util/wudlands-runtime.ts
-├── run.js               one call: restore, picks, click, fresh $char/$lead, count Legend and $keep_ changes, clean
-├── shims.js             viewport width, in-memory Web Storage, window.scroll
-├── test/                plays every Accepted and Not accepted example of the story rules in the real SugarCube
-└── Dockerfile           Node only, no secrets, no outbound network
+engine/
+├── package.json         jsdom and lodash pinned; npm test, npm start
+├── build.js             translates src/util/publish.ts and wudlands-runtime.ts (TypeScript) and copies
+│                        the built-in SugarCube format.js into build/, with stand-ins for i18n and image names
+├── src/
+│   ├── server.js        internal HTTP API: /start, /step, /move, /healthz; request checks; pages cached per snapshot id
+│   ├── pool.js          worker threads: single-use or shared, time limit (2 s), memory limit (256 MB)
+│   ├── worker.js        one worker: plays calls
+│   ├── play.js          one call: restore, put variables back, picks, click, party in, count Legend and $keep_ changes
+│   ├── page.js          builds the story page with the editor's publish code; a story's own Story JavaScript is never used
+│   ├── hooks.js         the engine's lines in the page: one history step, scene events to the engine
+│   ├── clean.js         choices, inputs and the cleaned HTML
+│   ├── shims.js         viewport width, window.scroll, alert, no fetch/XMLHttpRequest/WebSocket
+│   ├── legend-names.js  the 20 Legend names (checked against backend/legend.py by the app's tests)
+│   └── version.js       the engine version saved with every state
+├── test/                the calls, the worker modes, the HTTP API, the permission model, and every Accepted
+│                        example of the story rules played in SugarCube
+├── Dockerfile           Node only, no secrets; runs with --permission --allow-fs-read=/app/engine --allow-worker
+└── Dockerfile.dockerignore   only the engine and the three editor files go into the image (the same list is the
+                         repository's .dockerignore, for Docker builders without BuildKit)
 ```
+
+**Measured 2026-11-22** on a laptop, a small scene: a call takes about 175 ms in one worker (building the page in jsdom and starting SugarCube are most of it), 190 ms through shared workers, and 520 ms through single-use workers (a fresh worker each time). The image is 353 MB. To measure on Cloud Run: CPU per call, start time, large stories.
 
 The main app's Dockerfile stays as it is.
 
 ## Open points
 
 1. **Printed values as text:** the runtime change that makes `<<print>>` and a plain `$name` show values as plain text.
-2. **Permanent test against SugarCube:** turn the 2026-11-21 scratch scripts into a test that plays every refused and accepted example in the real SugarCube.
+2. ~~**Permanent test against SugarCube**~~ (2026-11-22, `engine/test/rules.test.js`): every Accepted example plays without an error. Still to add: playing the Not accepted examples, to show what each would do in SugarCube.
 3. **Quoted button forms (decided 2026-11-21: they stay):** `<<button "Go" "Cave">>` and `<<goto>>` inside buttons are how a button sends the player to a random scene, so they stay. Since 2026-11-22 the step graph (`backend/twine_graph.py`) and the submit check's structure rules add these exits from the story check's own reading of each scene (`story_rules.macro_exits`), random jumps included; the map from each label to its scenes follows when the control layer checks clicks by label (`ARCHITECTURE.md` "Every click").
 4. **`TestCharacters` in the editor's Test:** load the party into `$char` and `$lead`.
 5. **Editor placeholders** for the control layer's commands and results (a skill check, a fight, a side story's outcome), for example **Pass** / **Fail** buttons, so both branches can be tested in the editor, and one button per test-party member for `<<pick_member>>` (`ARCHITECTURE.md` "Picking a party member").
