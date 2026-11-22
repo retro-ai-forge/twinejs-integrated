@@ -1,5 +1,5 @@
 // The engine's internal HTTP API (APP_INTEGRATION_HEADLESS.md "The engine's
-// API"): POST /start, /step and /move, GET /healthz. Called only by the main
+// API"): POST /start, /step and /move, GET /health. Called only by the main
 // service: Cloud Run lets a request through only with a Google ID token of an
 // account that holds run.invoker on this service (SETUP.md "Story engines").
 //
@@ -148,7 +148,13 @@ function createEngine(options = {}) {
 			return {code: 200, answer: {status: 'version_mismatch', engineVersion: ENGINE_VERSION}};
 		}
 		const request = {...body, snapshot: {id: snapshot.id}};
-		return {code: 200, answer: await pool.run(call, page, request)};
+		const started = Date.now();
+		const answer = await pool.run(call, page, request);
+		// One line per call for Cloud Run's logs: nothing about the story or the players.
+		if (options.log !== false) {
+			console.log(JSON.stringify({severity: 'INFO', engine: pool.mode, call, status: answer.status, ms: Date.now() - started}));
+		}
+		return {code: 200, answer};
 	}
 
 	const server = http.createServer((req, res) => {
@@ -160,7 +166,9 @@ function createEngine(options = {}) {
 		const url = new URL(req.url, 'http://engine.invalid');
 		const call = url.pathname.replace(/^\//, '');
 
-		if (req.method === 'GET' && url.pathname === '/healthz') {
+		// Not /healthz: Cloud Run's front end reserves some paths ending in z and
+		// answers them with 404 itself, before the request reaches the engine.
+		if (req.method === 'GET' && url.pathname === '/health') {
 			return send(200, {ok: true, engineVersion: ENGINE_VERSION, mode: pool.mode});
 		}
 		if (req.method !== 'POST' || !CALLS.has(call)) {

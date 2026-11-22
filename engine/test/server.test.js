@@ -9,7 +9,7 @@ const {story, party} = require('./helpers');
 
 const STORY = story({
 	Start: 'Hello $lead.name.\n[[Go on|Next]]',
-	Next: 'Done.<<set $isEnding to true>>'
+	Next: 'Done.<<set $isEnding to "success">>'
 });
 
 async function post(base, call, body) {
@@ -27,7 +27,7 @@ async function listening(engine) {
 }
 
 test('start and step over HTTP; the story is sent only when the engine asks for it', async () => {
-	const engine = createEngine({mode: 'shared', workers: 1});
+	const engine = createEngine({mode: 'shared', workers: 1, log: false});
 	const base = await listening(engine);
 	try {
 		const snapshot = {id: 'author:story:abc'};
@@ -46,14 +46,14 @@ test('start and step over HTTP; the story is sent only when the engine asks for 
 		});
 		assert.equal(next.answer.status, 'ok', next.answer.message);
 		assert.equal(next.answer.scene.name, 'Next');
-		assert.equal(next.answer.isEnding, true);
+		assert.equal(next.answer.ending, 'success');
 	} finally {
 		await engine.close();
 	}
 });
 
 test('a state from another engine version answers version_mismatch', async () => {
-	const engine = createEngine({mode: 'shared', workers: 1});
+	const engine = createEngine({mode: 'shared', workers: 1, log: false});
 	const base = await listening(engine);
 	try {
 		const snapshot = {id: 'author:story:v', story: STORY};
@@ -71,7 +71,7 @@ test('a state from another engine version answers version_mismatch', async () =>
 });
 
 test('malformed requests are refused before any story runs', async () => {
-	const engine = createEngine({mode: 'shared', workers: 1});
+	const engine = createEngine({mode: 'shared', workers: 1, log: false});
 	const base = await listening(engine);
 	try {
 		const snapshot = {id: 'author:story:bad', story: STORY};
@@ -89,7 +89,7 @@ test('malformed requests are refused before any story runs', async () => {
 			assert.equal(code, 400, JSON.stringify(body));
 			assert.match(answer.message, message);
 		}
-		const health = await (await fetch(`${base}/healthz`)).json();
+		const health = await (await fetch(`${base}/health`)).json();
 		assert.deepEqual(health, {ok: true, engineVersion: '1', mode: 'shared'});
 		assert.equal((await fetch(`${base}/other`, {method: 'POST'})).status, 404);
 	} finally {
@@ -103,7 +103,7 @@ test('the engine plays under the permission model it runs with on Cloud Run', as
 		const {createEngine} = require('./src/server');
 		const {story, party} = require('./test/helpers');
 		const engine = createEngine({mode: 'single-use', workers: 1});
-		engine.handle('start', {snapshot: {id: 'x', story: story({Start: 'Hi $lead.name.<<set $isEnding to true>>'})}, party: party()})
+		engine.handle('start', {snapshot: {id: 'x', story: story({Start: 'Hi $lead.name.<<set $isEnding to "success">>'})}, party: party()})
 			.then(({answer}) => { console.log(JSON.stringify({status: answer.status, message: answer.message})); return engine.close(); })
 			.then(() => process.exit(0));
 	`;

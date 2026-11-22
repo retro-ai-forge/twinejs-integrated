@@ -2,7 +2,7 @@
 
 How the integrated Twine editor and SugarCube 2.37.3 behave inside, what of that is dangerous or awkward for a server-authoritative game, and how we cope with it: the story check, the editor's protections, and the engine that runs SugarCube in Node.js with jsdom.
 
-Updated 2026-11-21. The platform side lives in the main app repository: services and their rights, the story's way from submit to live, and how `serverless-wudlands` controls every adventure (the story stack with side stories and fights, checks, Legend, endings) are in `ARCHITECTURE.md`. What a story may contain is in `docs/STORY-RULES.md` ("the story rules").
+Updated 2026-11-23. The platform side lives in the main app repository: services and their rights, the story's way from submit to live, and how `serverless-wudlands` controls every adventure (the story stack with side stories and fights, checks, Legend, endings) are in `ARCHITECTURE.md`. What a story may contain is in `docs/STORY-RULES.md` ("the story rules").
 
 ## Status
 
@@ -14,7 +14,8 @@ Updated 2026-11-21. The platform side lives in the main app repository: services
 | Review copies (a submission opened in a reviewer's editor) | Built; re-checked when opened, since 2026-11-21 |
 | Story check (`backend/story_rules.py`, `_check_twine_syntax`) | Built 2026-11-20; story name, `stylesheet` tag, tags and story fields since 2026-11-21 |
 | Story check tested against the real SugarCube | Permanent test since 2026-11-22 (`engine/test/rules.test.js`): every Accepted example of the story rules plays without an error |
-| Engine (Node.js + jsdom + SugarCube) | Built 2026-11-22 in `engine/`, not deployed yet: `/start`, `/step`, `/move`, both worker modes, the limits, the Docker image (`npm test`, 29 tests) |
+| Engine (Node.js + jsdom + SugarCube) | Built 2026-11-22 in `engine/`: `/start`, `/step`, `/move`, `/health`, both worker modes, the limits, the Docker image (`npm test`, 29 tests) |
+| Engine services `engine-test` and `engine-live` | Deployed 2026-11-22 in the private network without a way out (`scripts/deploy_engines.sh` in the main app, with its checks); not called by the backend yet |
 | `TestCharacters` loaded into the editor's Test | Planned |
 | Printed values shown as plain text (runtime change) | Planned |
 | Editor placeholders for skill checks, fights and side-story results | Planned |
@@ -50,7 +51,7 @@ The main protection, in the main app: `_check_twine_syntax` in `backend/auth_rou
   ```
   <<button [[Take the sword|Cave]]>><<set $hasSword to true>><</button>>
   <<area 0.10 0.20 0.30 0.40 [[Gate]]>>
-  <<for _i, _c range $char>><<if _c.equipment.includes("rope_1")>><<set _hasRope to true>><</if>><</for>>
+  <<for _i, _c range $char>><<if _c.equipment.includes("rope")>><<set _hasRope to true>><</if>><</for>>
   ```
 - **Checked without running:** the checker reads every scene and every branch. Code can be put together from pieces of text across several scenes, or hidden in a branch only some players or dates reach, so playing a story during review can't find it. The checker accepts only what it can read as one of the listed forms.
 - **Unique choice texts:** the player's click or pick comes back as its text, so every text a player can pick appears once in a scene: link and button texts, the `<label>` text each radio button and checkbox sits in, and the options of drop-downs and cycles, also across lists and in different branches of an `<<if>>` or `<<switch>>` (a text always names one choice). Choices don't go inside `<<for>>`.
@@ -164,7 +165,7 @@ The control layer's own rolls (side stories, skill checks, fights) are separate:
 
 - **`$char` and `$lead` are data,** set by the engine from what the control layer sends, fresh for every new scene. Stories read them and change only their Legend values; anything else written into them is lost at the next scene. They are never written into `StoryInit`, which would make player-typed names part of the story's code. Their values and how stories may use them are in the story rules ("Characters").
 - **Still to align:** `adventures._character_var` sends `id`, `firstName`, `lastName`, `gender`, `race`, `raceGroup`, `birthsign`, `vitalStatus`, the maximum attributes (`attr`) and `classes`. The story rules need `name`, `might` and the other attributes as current values with injuries (`attrNow`), `prof1`–`prof3`, `equipment` and the 20 Legend values with the fade worked out (`legend.decayed`).
-- **Equipment:** item ids with their tier, each listed with every lower tier too: a tier-3 candle also counts as `candle_1` and `candle_2`, so `.includes("candle_1")` means "a candle of tier 1 or better".
+- **Equipment:** item ids with their tier, each listed with every lower tier and its family id too: a tier-3 candle is `candle_3`, `candle_2`, `candle_1` and `candle`, so `.includes("candle_2")` means "a candle of tier 2 or better" and `.includes("candle")` "any candle". The submit check accepts both kinds of id (`story_rules.EQUIPMENT_IDS`); a family id never ends in `_<digit>`, so the two never collide.
 - **Legend changes** (`$lead.mercy += 2`, `$char[1].mercy`, `_c.mercy` in a `range $char` loop) are reported by character and name; Python applies them by its rules, so the result can differ from plain addition in the editor's Test.
 - **Counting each change once:** a restored scene runs its commands again, and their changes were already counted. So the engine re-shows the current scene with the character data it was first shown with (then the choices the player saw match too) and counts only what follows: the clicked element's commands, then the new scene's own.
 
@@ -179,7 +180,7 @@ In the 2026-11-19 tests a single `<<set>>` line reached the Node.js process outs
 jsdom's script settings can't prevent this: with scripts off SugarCube never starts, with `runScripts: "outside-only"` a plain `<<set>>` in `StoryInit` still reached the server process, and SugarCube runs the story's commands as JavaScript inside the same page. So:
 
 1. **The story check** keeps code out (see above), and review comes before any live play.
-2. **The engine service has nothing to steal:** no secrets, a service account without permissions, no outbound network (enforced by the platform), reachable only from the backend (`ARCHITECTURE.md`).
+2. **The engine service has nothing to steal:** no secrets, a service account without permissions, no outbound network and no name lookups (enforced by the platform: a private network without a route out, a firewall rule denying everything, and a DNS policy that answers no lookup, since a lookup of `<data>.attacker.example` alone could carry data out; `engine/src/egress-check.js` checks all of it after every deploy), reachable only from the backend (`ARCHITECTURE.md`).
 3. **Node's permission model:** no child processes and no file access beyond its own files (in the test it blocked the shell command and the file read). It can't block the network, hence the platform rule.
 4. **jsdom settings:** `runScripts: "dangerously"`, because SugarCube itself is a script; `resources` off, so the page fetches nothing.
 5. **Limits:** a time limit per click (2 seconds stopped an endless loop in the test) and a memory limit.
@@ -242,7 +243,7 @@ Internal HTTP with JSON, called only by `serverless-wudlands` (Google ID token, 
     { "kind": "listbox",  "options": ["Sword", "Bow"],  "picked": "Sword" }
   ],
   "state":        "…",
-  "isEnding":     false,
+  "ending":       null,
   "allowRunAway": true,
   "legend":   { "c1": { "mercy": 3 } },
   "keep":     { "metHermit": true },
@@ -255,7 +256,8 @@ Internal HTTP with JSON, called only by `serverless-wudlands` (Google ID token, 
 - **`choices`:** in the order they appear: links and buttons by their text, hotspots by a neutral handle numbered per scene.
 - **`inputs`:** every radio group, checkbox, drop-down and cycle with what is picked now, so the play screen can show it and send picks back.
 - **`state`:** the new saved state, for the frame. At most 64 KB.
-- **`isEnding`, `allowRunAway`:** the current `$isEnding` and `$meta_allowRunAway`, for Leave and Retreat.
+- **`ending`:** the current `$isEnding` when it is text (`"success:dragon_slain"`, `"failure"`, `"lastresort"`; see the app's `docs/STORY-RULES.md` "Endings"), else `null`. The engine passes it on unchecked: the control layer ends the run only on a dead end of the step graph whose value the story check accepted.
+- **`allowRunAway`:** the current `$meta_allowRunAway`, for Leave and Retreat.
 - **`legend`:** per character id, the Legend changes written by the clicked element's commands and by the new scene's own text (never the re-shown scene's). Python applies them by the Legend rules and the story's points.
 - **`keep`:** the `$keep_` values this call changed. The control layer writes them to every member's story memory once the step is saved.
 - **`requests`:** what the story asked the control layer for, empty for now. Planned: a skill check (`{"kind": "check", "skill": "climb", "difficulty": "hard", "pass": "Cliff top", "fail": "Cliff bottom"}`, which comes with `status: "check"` and no new scene), `<<pick_member>>`, fights, consequence tags, `<<forage>>`.
@@ -288,7 +290,7 @@ engine/
 ├── build.js             translates src/util/publish.ts and wudlands-runtime.ts (TypeScript) and copies
 │                        the built-in SugarCube format.js into build/, with stand-ins for i18n and image names
 ├── src/
-│   ├── server.js        internal HTTP API: /start, /step, /move, /healthz; request checks; pages cached per snapshot id
+│   ├── server.js        internal HTTP API: /start, /step, /move, /health; request checks; pages cached per snapshot id
 │   ├── pool.js          worker threads: single-use or shared, time limit (2 s), memory limit (256 MB)
 │   ├── worker.js        one worker: plays calls
 │   ├── play.js          one call: restore, put variables back, picks, click, party in, count Legend and $keep_ changes
@@ -297,7 +299,10 @@ engine/
 │   ├── clean.js         choices, inputs and the cleaned HTML
 │   ├── shims.js         viewport width, window.scroll, alert, no fetch/XMLHttpRequest/WebSocket
 │   ├── legend-names.js  the 20 Legend names (checked against backend/legend.py by the app's tests)
-│   └── version.js       the engine version saved with every state
+│   ├── version.js       the engine version saved with every state
+│   └── egress-check.js  run as the Cloud Run job engine-egress-check after every deploy: tries to reach
+│                        the internet and to look up names with the engines' network settings, and succeeds
+│                        only when nothing answers (any answer to a lookup counts as getting out)
 ├── test/                the calls, the worker modes, the HTTP API, the permission model, and every Accepted
 │                        example of the story rules played in SugarCube
 ├── Dockerfile           Node only, no secrets; runs with --permission --allow-fs-read=/app/engine --allow-worker
@@ -305,9 +310,9 @@ engine/
                          repository's .dockerignore, for Docker builders without BuildKit)
 ```
 
-**Measured 2026-11-22** on a laptop, a small scene: a call takes about 175 ms in one worker (building the page in jsdom and starting SugarCube are most of it), 190 ms through shared workers, and 520 ms through single-use workers (a fresh worker each time). The image is 353 MB. To measure on Cloud Run: CPU per call, start time, large stories.
+**Measured 2026-11-22** on a laptop, a small scene: a call takes about 175 ms in one worker (building the page in jsdom and starting SugarCube are most of it), 190 ms through shared workers, and 520 ms through single-use workers (a fresh worker each time). The image is 353 MB. **On Cloud Run** (first deploy, 2026-11-22): a step took 0.55-0.63 s on `engine-live` (2 vCPU, shared) and 1.3-1.9 s on `engine-test` (1 vCPU, single-use), because the next fresh worker loaded at the same time as the call and Cloud Run gives no CPU between requests; since then the next worker starts after the call and `engine-test` runs with CPU always on (`--no-cpu-throttling`). Every call writes one log line (`engine`, `call`, `status`, `ms`; nothing about the story or players). Still to measure: large stories.
 
-The main app's Dockerfile stays as it is.
+The main app's Dockerfile stays as it is. Deploying is done from the main app with `scripts/deploy_engines.sh`: it runs `npm test`, builds and pushes the image tagged with this repository's commit (it warns about uncommitted engine changes, which the tag wouldn't match), deploys both services and checks them (`SETUP.md` "Story engines" in the main app).
 
 ## Open points
 

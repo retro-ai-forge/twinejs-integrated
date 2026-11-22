@@ -498,7 +498,9 @@ class Run {
 			engineVersion: ENGINE_VERSION,
 			...shown,
 			state,
-			isEnding: vars.isEnding === true,
+			// The ending's value ("success:dragon_slain", "failure"...), null when the
+			// scene isn't one. The control layer checks it against the story's endings.
+			ending: typeof vars.isEnding === 'string' ? vars.isEnding : null,
 			allowRunAway: vars.meta_allowRunAway === true,
 			legend,
 			keep,

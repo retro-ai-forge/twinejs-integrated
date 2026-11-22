@@ -9,7 +9,7 @@ test('start shows the start scene with the party, and its choices', async () => 
 		story({
 			StoryInit: '<<set $meta_allowRunAway to true>>',
 			Start: 'Hello $lead.name and $char[1].name.\n[[Go on|Next]]\n<<button "Wait">><<goto "Next">><</button>>',
-			Next: 'Done.<<set $isEnding to true>>'
+			Next: 'Done.<<set $isEnding to "success">>'
 		})
 	);
 	const answer = await player.start();
@@ -19,7 +19,7 @@ test('start shows the start scene with the party, and its choices', async () => 
 	assert.match(text(answer), /Hello Alrik and Brena\./);
 	assert.deepEqual(answer.choices, [{label: 'Go on'}, {label: 'Wait'}]);
 	assert.equal(answer.allowRunAway, true);
-	assert.equal(answer.isEnding, false);
+	assert.equal(answer.ending, null);
 	assert.deepEqual(answer.requests, []);
 });
 
@@ -29,8 +29,8 @@ test('the cleaned scene keeps text and classes, nothing behind them', async () =
 			Start:
 				'<span class="red">Look.</span> [img[gate.webp]]\n[[Enter the cave|Cave]] [[Camp]]\n' +
 				'<<area 0.10 0.20 0.30 0.40 [[Cave]]>>\n<<link [[Rest|Camp]]>><<set $rested to true>><</link>>',
-			Cave: 'Dark.<<set $isEnding to true>>',
-			Camp: 'Warm.<<set $isEnding to true>>'
+			Cave: 'Dark.<<set $isEnding to "success">>',
+			Camp: 'Warm.<<set $isEnding to "success">>'
 		})
 	);
 	const {html, choices} = await player.start();
@@ -47,14 +47,14 @@ test('the cleaned scene keeps text and classes, nothing behind them', async () =
 test('a step follows the clicked label, a hotspot its handle', async () => {
 	const scenes = {
 		Start: '[img[gate.webp]]\n<<area 0.10 0.20 0.30 0.40 [[Gate]]>>\n[[Walk on->Road]]',
-		Gate: 'At the gate.<<set $isEnding to true>>',
-		Road: 'On the road.<<set $isEnding to true>>'
+		Gate: 'At the gate.<<set $isEnding to "success">>',
+		Road: 'On the road.<<set $isEnding to "success">>'
 	};
 	const byLabel = new Player(story(scenes));
 	await byLabel.start();
 	const road = await byLabel.click('walk  ON');
 	assert.equal(road.scene.name, 'Road');
-	assert.equal(road.isEnding, true);
+	assert.equal(road.ending, 'success');
 
 	const byHandle = new Player(story(scenes));
 	await byHandle.start();
@@ -62,7 +62,7 @@ test('a step follows the clicked label, a hotspot its handle', async () => {
 });
 
 test('a label that is not in the scene is refused, and nothing runs', async () => {
-	const player = new Player(story({Start: '[[Go on|Next]]', Next: 'x<<set $isEnding to true>>'}));
+	const player = new Player(story({Start: '[[Go on|Next]]', Next: 'x<<set $isEnding to "success">>'}));
 	const started = await player.start();
 	const answer = await player.click('Fly away');
 	assert.equal(answer.status, 'refused');
@@ -81,7 +81,7 @@ test('picks: radio buttons, checkboxes, drop-downs and cycles reach the next sce
 				'<<listbox "$weapon">><<option "Sword" "sword">><<option "Bow" "bow">><</listbox>>\n' +
 				'<<cycle "$stance">><<option "Defensive" "defensive">><<option "Bold" "bold">><<option "Wild" "wild">><</cycle>>\n' +
 				'[[Set out->Road]]',
-			Road: 'Path $path, careful $careful, weapon $weapon, stance $stance.<<set $isEnding to true>>'
+			Road: 'Path $path, careful $careful, weapon $weapon, stance $stance.<<set $isEnding to "success">>'
 		})
 	);
 	const start = await player.start();
@@ -100,7 +100,7 @@ test('a pick that is not in the scene refuses the click', async () => {
 	const player = new Player(
 		story({
 			Start: '<label><<radiobutton "$path" "north">> North</label>\n[[Set out->Road]]',
-			Road: 'x<<set $isEnding to true>>'
+			Road: 'x<<set $isEnding to "success">>'
 		})
 	);
 	await player.start();
@@ -114,7 +114,7 @@ test('a click that stays in the scene keeps its change for the next click', asyn
 		story({
 			StoryInit: '<<set $water to 3>>',
 			Well: '<<link "Drink">><<set $water -= 1>><</link>>\n<<button [[Walk on|Road]]>><</button>>',
-			Road: 'Water $water.<<set $isEnding to true>>'
+			Road: 'Water $water.<<set $isEnding to "success">>'
 		})
 	);
 	await player.start();
@@ -128,7 +128,7 @@ test('a number rolled in the scene text is the one the button sees', async () =>
 	const player = new Player(
 		story({
 			Start: '<<set $roll to random(1, 1000000)>>\n<<button "Go on">><<set $seen to $roll>><<goto "Next">><</button>>',
-			Next: 'x<<set $isEnding to true>>'
+			Next: 'x<<set $isEnding to "success">>'
 		})
 	);
 	await player.start();
@@ -144,7 +144,7 @@ test('Legend changes are counted once: the click and the new scene, never the re
 			Next:
 				'<<set $lead.courage += 2>><<set $char[1].mercy += 1>><<for _i, _c range $char>><<set _c.courage += 1>><</for>>\n' +
 				'<<set $lead.might to 99>>[[On|End]]',
-			End: 'x<<set $isEnding to true>>'
+			End: 'x<<set $isEnding to "success">>'
 		})
 	);
 	const start = await player.start();
@@ -159,7 +159,7 @@ test('$picked is the one picked, else the lead; $keep_ values come in and their 
 	const hut = {
 		StoryInit: '<<set $keep_metHermit to false>>',
 		Hut: '<<if $keep_metHermit>>You again, $picked.name.<<else>>A stranger, $picked.name.<</if>>\n[[Greet him->Fire][$keep_metHermit to true]]',
-		Fire: 'Warm.<<set $isEnding to true>>'
+		Fire: 'Warm.<<set $isEnding to "success">>'
 	};
 
 	// Remembered from an earlier run, and Brena picked.
@@ -177,8 +177,8 @@ test('results are written into a resumed frame before the click', async () => {
 	const player = new Player(
 		story({
 			Harbour: '<<button "Back aboard">><<if $sideResult is "fled">><<goto "Ashore">><<else>><<goto "Aboard">><</if>><</button>>',
-			Ashore: 'Ashore.<<set $isEnding to true>>',
-			Aboard: 'Aboard.<<set $isEnding to true>>'
+			Ashore: 'Ashore.<<set $isEnding to "success">>',
+			Aboard: 'Aboard.<<set $isEnding to "success">>'
 		})
 	);
 	await player.start();
@@ -191,8 +191,8 @@ test('move goes to Retreat, scene tags come along', async () => {
 		story({
 			Start: '[[On|Inn]]',
 			Inn: 'A bed.[[Sleep|End]]',
-			End: 'x<<set $isEnding to true>>',
-			Retreat: 'You run.<<set $isEnding to true>>'
+			End: 'x<<set $isEnding to "success">>',
+			Retreat: 'You run.<<set $isEnding to "failure">>'
 		}),
 		'Inn',
 		['camp']
@@ -203,15 +203,15 @@ test('move goes to Retreat, scene tags come along', async () => {
 	assert.deepEqual(inn.scene.tags, ['camp']);
 	const retreat = await player.move('Retreat');
 	assert.equal(retreat.scene.name, 'Retreat');
-	assert.equal(retreat.isEnding, true);
+	assert.equal(retreat.ending, 'failure');
 });
 
 test('random jumps land in one of their scenes', async () => {
 	const storyDoc = story({
 		Start: '<<button "Turn the page">><<goto `"Page" + random(1, 3)`>><</button>>',
-		Page1: 'One.<<set $isEnding to true>>',
-		Page2: 'Two.<<set $isEnding to true>>',
-		Page3: 'Three.<<set $isEnding to true>>'
+		Page1: 'One.<<set $isEnding to "success">>',
+		Page2: 'Two.<<set $isEnding to "success">>',
+		Page3: 'Three.<<set $isEnding to "success">>'
 	});
 	const reached = new Set();
 	const player = new Player(storyDoc);
@@ -238,14 +238,14 @@ test('visited() counts across steps', async () => {
 });
 
 test('a story error answers story_error', async () => {
-	const player = new Player(story({Start: 'Broken <<nosuchmacro>> here.[[On|End]]', End: 'x<<set $isEnding to true>>'}));
+	const player = new Player(story({Start: 'Broken <<nosuchmacro>> here.[[On|End]]', End: 'x<<set $isEnding to "success">>'}));
 	const answer = await player.start();
 	assert.equal(answer.status, 'story_error');
 	assert.match(answer.message, /nosuchmacro/);
 });
 
 test('an unreadable state answers story_error', async () => {
-	const player = new Player(story({Start: '[[On|End]]', End: 'x<<set $isEnding to true>>'}));
+	const player = new Player(story({Start: '[[On|End]]', End: 'x<<set $isEnding to "success">>'}));
 	player.state = '{"nope":1}';
 	const answer = await player.click('On');
 	assert.equal(answer.status, 'story_error');
@@ -254,7 +254,7 @@ test('an unreadable state answers story_error', async () => {
 test('the page has no network: fetch and XMLHttpRequest are gone', async () => {
 	const player = new Player(
 		story({
-			Start: 'fetch <<print typeof fetch>>, xhr <<print typeof XMLHttpRequest>>, socket <<print typeof WebSocket>>.<<set $isEnding to true>>'
+			Start: 'fetch <<print typeof fetch>>, xhr <<print typeof XMLHttpRequest>>, socket <<print typeof WebSocket>>.<<set $isEnding to "success">>'
 		})
 	);
 	const answer = await player.start();
@@ -262,7 +262,7 @@ test('the page has no network: fetch and XMLHttpRequest are gone', async () => {
 });
 
 test("a story's own Story JavaScript is never played", async () => {
-	const storyDoc = story({Start: 'Value <<print typeof window.planted>>.<<set $isEnding to true>>'});
+	const storyDoc = story({Start: 'Value <<print typeof window.planted>>.<<set $isEnding to "success">>'});
 	storyDoc.storyData.script = 'window.planted = 1;';
 	const answer = await new Player(storyDoc).start();
 	assert.match(text(answer), /Value undefined\./);

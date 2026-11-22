@@ -128,7 +128,9 @@ export const WUDLANDS_RUNTIME = `
 // Wudlands AUTHORITATIVE stylesheet — platform mechanics that must look the same
 // in every story. Injected AFTER the author's stylesheet with !important (see
 // publish.ts), so an author's own CSS can't break them: the Save/Restart UI bar
-// collapses to a small floating toggle and the passage area uses the full width.
+// collapses to a small floating toggle, the passage area uses the full width,
+// the text inset follows --scene-gutter, and a picture with <<area>> hotspots
+// fills its wrapper exactly, so the clickable areas stay on the picture.
 // WUDLANDS_RUNTIME sets the matching Config.ui.stowBarInitially = true.
 export const WUDLANDS_STYLESHEET = `
 /* --- Wudlands: collapse the UI bar to a floating toggle --- */
@@ -160,24 +162,57 @@ export const WUDLANDS_STYLESHEET = `
    line breaks elsewhere are untouched. */
 .passage img + br,
 .passage .wud-hotspots + br { display: none !important; }
+
+/* --- Wudlands: the text inset, and pictures over the full width --- */
+/* The inset is the story's --scene-gutter (20px by default, see the defaults
+   below), kept between 0 and 48px. The text gets it as side padding; pictures
+   reach back over it to the edges. */
+.passage {
+	padding-left: clamp(0px, var(--scene-gutter), 48px) !important;
+	padding-right: clamp(0px, var(--scene-gutter), 48px) !important;
+}
+
+/* A picture with <<area>> hotspots sits in .wud-hotspots, and the areas are
+   placed in shares of that wrapper. So the wrapper spans the full width and the
+   picture fills it exactly - no story CSS may give the picture other margins or
+   another width, or the areas would slip off it. */
+.passage .wud-hotspots {
+	display: block !important;
+	width: calc(100% + 2 * clamp(0px, var(--scene-gutter), 48px)) !important;
+	max-width: none !important;
+	margin: 0 calc(-1 * clamp(0px, var(--scene-gutter), 48px)) 8px !important;
+}
+
+.passage .wud-hotspots > img {
+	display: block !important;
+	width: 100% !important;
+	max-width: none !important;
+	height: auto !important;
+	margin: 0 !important;
+}
 `;
 
 // Wudlands OVERRIDABLE defaults — presentation/taste, not mechanics. Injected
 // BEFORE the author's stylesheet with no !important (see publish.ts), so a story
-// can change any of it from its own StoryStylesheet (e.g. a wider text gutter or
-// turning the image bleed off). This just gives a good-looking baseline: the
-// passage text is inset a little from the edges, while a top image bleeds back
-// out flush to them.
+// can change any of it from its own StoryStylesheet: the text inset
+// (:root { --scene-gutter: 0px; }) and how plain pictures are laid out (its own
+// classes, like .row img). #ui-... and .wud-... are the platform's: the story
+// check refuses them in a story (backend/story_rules.py PLATFORM_CSS).
 export const WUDLANDS_DEFAULT_STYLESHEET = `
 /* --- Wudlands defaults (override these in your own StoryStylesheet) --- */
-/* Images are their own block, filling the full content width. There is no text
-   gutter by default — add your own if you want the text inset from the edges,
-   e.g. .passage { padding: 0 1rem; } in your StoryStylesheet. */
+/* The text is inset 20px from the edges; change it, 0 to 48px, with
+   :root { --scene-gutter: 0px; } */
+:root { --scene-gutter: 20px; }
+
+/* Pictures are their own block over the full width, reaching back over the text
+   inset to the edges. A picture with clickable areas always does (the platform's
+   rules above); plain ones may be laid out by the story's own classes. */
 .passage img {
 	display: block;
-	width: 100%;
+	width: calc(100% + 2 * clamp(0px, var(--scene-gutter), 48px));
+	max-width: none;
 	height: auto;
-	margin: 0 0 8px 0;
+	margin: 0 calc(-1 * clamp(0px, var(--scene-gutter), 48px)) 8px;
 }
 `;
 

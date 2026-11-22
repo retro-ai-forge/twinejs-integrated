@@ -101,7 +101,7 @@ class EnginePool {
 		if (!['shared', 'single-use'].includes(mode)) {
 			throw new Error(`unknown worker mode ${mode}`);
 		}
-		Object.assign(this, {mode, recycleAfter, timeLimitMs, memoryMb});
+		Object.assign(this, {mode, spare, recycleAfter, timeLimitMs, memoryMb});
 		this.nextId = 0;
 		this.queue = [];
 		this.closed = false;
@@ -149,11 +149,9 @@ class EnginePool {
 			return null;
 		}
 		this.running += 1;
-		const worker = this.spares.shift() || new EngineWorker(this.memoryMb);
-		if (!this.closed) {
-			this.spares.push(new EngineWorker(this.memoryMb));
-		}
-		return worker;
+		// The replacement is started once this call is done (giveBack), so it
+		// doesn't take CPU from the call (engine-test has a single vCPU).
+		return this.spares.shift() || new EngineWorker(this.memoryMb);
 	}
 
 	giveBack(worker) {
@@ -169,6 +167,9 @@ class EnginePool {
 		} else {
 			worker.end();
 			this.running -= 1;
+			if (!this.closed && this.spares.length < this.spare) {
+				this.spares.push(new EngineWorker(this.memoryMb));
+			}
 		}
 		this.next();
 	}

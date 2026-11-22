@@ -6,7 +6,7 @@ const {EnginePool} = require('../src/pool');
 const {buildPage} = require('../src/page');
 const {story, party} = require('./helpers');
 
-const plain = buildPage(story({Start: 'Hello $lead.name.[[On|End]]', End: 'x<<set $isEnding to true>>'}));
+const plain = buildPage(story({Start: 'Hello $lead.name.[[On|End]]', End: 'x<<set $isEnding to "success">>'}));
 // Raw SugarCube, not a story the check would let through: an endless loop.
 const endless = buildPage(story({Start: '<<run while (true) {}>>'}));
 

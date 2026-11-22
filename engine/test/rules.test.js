@@ -79,11 +79,11 @@ test('every Accepted example of the story rules plays in SugarCube without an er
 	const failures = [];
 	for (const {heading, block, storyInit} of blocks) {
 		const scenes = storyInit
-			? {StoryInit: block, Start: 'Started.<<set $isEnding to true>>'}
+			? {StoryInit: block, Start: 'Started.<<set $isEnding to "success">>'}
 			: {StoryInit: initBlock, Start: block};
 		for (const name of scenesNamedIn(block)) {
 			if (!(name in scenes)) {
-				scenes[name] = 'Elsewhere.<<set $isEnding to true>>';
+				scenes[name] = 'Elsewhere.<<set $isEnding to "success">>';
 			}
 		}
 		const answer = await new Player(story(scenes), FULL_PARTY).start();
