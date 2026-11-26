@@ -30,6 +30,13 @@ function getStoryInspectors() {
 		.filter(el => el.dataset.id);
 }
 
+let fetchMock: jest.Mock;
+
+beforeEach(() => {
+	fetchMock = jest.fn().mockResolvedValue({ok: true});
+	(global as any).fetch = fetchMock;
+});
+
 describe('<DuplicateStoryButton>', () => {
 	function renderComponent(props?: Partial<DuplicateStoryButtonProps>) {
 		return render(
@@ -49,6 +56,22 @@ describe('<DuplicateStoryButton>', () => {
 		expect(getStoryInspectors().length).toBe(1);
 		fireEvent.click(screen.getByText('common.duplicate'));
 		expect(getStoryInspectors().length).toBe(2);
+	});
+
+	it("copies the original's images to the duplicate", () => {
+		renderComponent();
+		const [original] = getStoryInspectors().map(el => el.dataset.id);
+
+		fireEvent.click(screen.getByText('common.duplicate'));
+
+		const copy = getStoryInspectors()
+			.map(el => el.dataset.id)
+			.find(id => id !== original);
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			`/api/auth/me/twine-stories/${copy}/images/copy-from/${original}`,
+			{method: 'POST', credentials: 'include'}
+		);
 	});
 
 	it('is accessible', async () => {

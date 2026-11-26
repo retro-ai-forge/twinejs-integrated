@@ -79,6 +79,33 @@ export function imagesApiBase(storyId: string): string {
 	return `/api/auth/me/twine-stories/${encodeURIComponent(storyId)}/images`;
 }
 
+/**
+ * Copies a story's working images to another story (the editor's Duplicate:
+ * the copy has a new id, so a folder of its own that starts empty). Resolves
+ * to whether it worked; signed out or offline it fails quietly, as the copy
+ * then has nothing to show in the cloud either. A reviewer's copy of a
+ * submission is never the source: its images are the author's.
+ */
+export async function copyStoryImages(
+	fromStoryId: string,
+	toStoryId: string
+): Promise<boolean> {
+	if (reviewCopyOf(fromStoryId)) {
+		return false;
+	}
+
+	try {
+		const res = await fetch(
+			`${imagesApiBase(toStoryId)}/copy-from/${encodeURIComponent(fromStoryId)}`,
+			{method: 'POST', credentials: 'include'}
+		);
+
+		return res.ok;
+	} catch {
+		return false;
+	}
+}
+
 // Matches the opening of a Twee image macro up to its first `]`, capturing the
 // source segment. Handles `[img[src]]`, `[img[src][link]]` and `[img[title|src]]`
 // variants by matching only `[img[ ... ]` and leaving any trailing `[...]` and
